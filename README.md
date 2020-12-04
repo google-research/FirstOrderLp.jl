@@ -1,53 +1,152 @@
-# New Project Template
+# FirstOrderLp.jl
 
-This repository contains a template that can be used to seed a repository for a
-new Google open source project.
+## Introduction
 
-See [go/releasing](http://go/releasing) (available externally at
-https://opensource.google/docs/releasing/) for more information about
-releasing a new Google open source project.
+This is experimental code for solving linear and quadratic programming problems
+using first-order methods. It provides basic utilities and data structures for
+reading MPS files, rescaling, and implementing saddle-point methods. Specialized
+implementations are present for Mirror Prox and Primal-Dual Hybrid Gradient. It
+is focused on supporting experiments and publications and is not a "solver" per
+se.
 
-This template uses the Apache license, as is Google's default.  See the
-documentation for instructions on using alternate license.
+## One-time setup
 
-## How to use this template
+Install Julia 1.5.2 or later. From the root directory of the repository, run:
 
-1. Clone it from GitHub.
-    * There is no reason to fork it.
-1. Create a new local repository and copy the files from this repo into it.
-1. Modify README.md and docs/contributing.md to represent your project, not the
-   template project.
-1. Develop your new project!
-
-``` shell
-git clone https://github.com/google/new-project
-mkdir my-new-thing
-cd my-new-thing
-git init
-cp -r ../new-project/* ../new-project/.github .
-git add *
-git commit -a -m 'Boilerplate for new Google open source project'
+```shell
+$ julia --project=scripts -e 'import Pkg; Pkg.instantiate()'
 ```
 
-## Source Code Headers
+This setup needs to be run again only if the dependencies change.
 
-Every file containing source code must include copyright and license
-information. This includes any JS/CSS files that you might be serving out to
-browsers. (This is to help well-intentioned people avoid accidental copying that
-doesn't comply with the license.)
+## Running
 
-Apache header:
+Use one of the following two scripts to solve LP instances. All commands below
+assume that the current directory is the working directory.
 
-    Copyright 2020 Google LLC
+### `solve_qp.jl`
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+This is the recommended script for using FirstOrderLp. The results are written
+to JSON and text files; see the source for the description of the output
+formats.
 
-        https://www.apache.org/licenses/LICENSE-2.0
+To see the meaning of each argument:
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+```shell
+$ julia --project=scripts scripts/solve_qp.jl --help
+```
+
+To solve a test instance with PDHG:
+
+```shell
+$ julia --project=scripts scripts/solve_qp.jl \
+--instance_path test/trivial_lp_model.mps --iteration_limit 5000 \
+--method pdhg --output_dir /tmp/first_order_lp_solve
+```
+
+### `solve_lp_scs.jl`
+
+This script provides an interface similar to `solve_qp` but for calling SCS.
+Note that SCS does not support quadratic objectives.
+
+To solve a test instance with SCS's indirect mode:
+
+```shell
+$ julia --project=scripts scripts/solve_lp_scs.jl \
+--instance_path test/trivial_lp_model.mps --iteration_limit 5000 \
+--solver scs-indirect --output_dir /tmp/scs_solve
+```
+
+## Loading the module
+
+Use the following commands to load the FirstOrderLp module from Julia and to
+view the docstrings:
+
+```
+$ julia --project
+…
+julia> import FirstOrderLp
+julia> ?  # Switch to the help> prompt.
+help> FirstOrderLp.optimize
+…
+help> FirstOrderLp
+…
+```
+
+## Running the tests
+
+To run the module’s tests run:
+
+```shell
+$ julia --color=yes --project -e 'import Pkg; Pkg.test("FirstOrderLp")'
+```
+
+## Interpreting the output
+
+When the verbosity option is greater than 2, a table of iteration stats will be
+printed with the following headings (split into six groups).
+
+##### runtime
+
+`#iter` = the current iteration number.
+
+`#kkt` = the cumulative number of times the KKT matrix is multiplied.
+
+`seconds` = the cumulative solve time in seconds.
+
+##### residuals
+
+`pr norm` = the euclidean norm of primal residuals (i.e., the constraint
+violation).
+
+`du norm` = the euclidean norm of the dual residuals.
+
+`gap` = the gap between the primal and dual objective.
+
+##### solution information
+
+`pr obj` = the primal objective value.
+
+`pr norm` = the euclidean norm of the primal variable vector.
+
+`du norm` = the euclidean norm of the dual variable vector.
+
+##### relative residuals
+
+`rel pr` = the euclidean norm of the primal residuals, relative to the
+right-hand-side.
+
+`rel dul` = the euclidean norm of the dual residuals, relative to the primal
+linear objective.
+
+`rel gap` = the relative optimality gap.
+
+##### primal ray (verbosity greater than seven only)
+
+`pr norm` = the euclidean norm of the primal residuals for the primal ray
+problem.
+
+`linear` = the linear part of the primal ray objective.
+
+`qu norm` = the norm of the quadratic part of the primal ray objective.
+
+##### dual ray (verbosity greater than seven only)
+
+`du norm` = the norm of the dual part of the dual ray.
+
+`dual obj` = the dual ray objective value.
+
+## Auto-formatting Julia code
+
+A one-time step is required to use the auto-formatter:
+
+```shell
+$ julia --project=formatter -e 'import Pkg; Pkg.instantiate()'
+```
+
+Run the following command to auto-format all Julia code in this directory before
+submitting changes:
+
+```shell
+$ julia --project=formatter -e 'using JuliaFormatter; format(".")'
+```
