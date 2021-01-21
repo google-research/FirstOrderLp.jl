@@ -1,13 +1,15 @@
 # FirstOrderLp.jl
 
+**This is not an official Google product.**
+
 ## Introduction
 
-This is experimental code for solving linear and quadratic programming problems
-using first-order methods. It provides basic utilities and data structures for
-reading MPS files, rescaling, and implementing saddle-point methods. Specialized
-implementations are present for Mirror Prox and Primal-Dual Hybrid Gradient. It
-is focused on supporting experiments and publications and is not a "solver" per
-se.
+This repository contains experimental code for solving linear and quadratic
+programming problems using first-order methods. It provides basic utilities and
+data structures for reading MPS files, rescaling, and implementing saddle-point
+methods. Specialized implementations are present for Mirror Prox and
+Primal-Dual Hybrid Gradient. It is focused on supporting experiments and
+publications and is not a "solver" per se.
 
 ## One-time setup
 
