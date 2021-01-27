@@ -362,7 +362,7 @@ end
     problem.right_hand_side[3] = 8
     output = FirstOrderLp.optimize(parameters, problem)
     final_stats = output.iteration_stats[end]
-    @test final_stats.convergence_information[1].dual_objective >= 1e6
+    @test output.termination_reason == FirstOrderLp.PRIMAL_INFEASIBLE
   end
   @testset "LP without bounds" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
