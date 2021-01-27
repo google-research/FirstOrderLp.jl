@@ -60,8 +60,8 @@ mutable struct TerminationCriteria
   If the following two conditions hold we say that we have obtained an
   approximate dual ray, which is an approximate certificate of primal
   infeasibility.
-    (1) dual_ray_objective > eps_primal_infeasible,
-    (2) max_dual_ray_infeasibility / dual_ray_objective <
+    (1) dual_ray_objective > 0.0,
+    (2) max_dual_ray_infeasibility / dual_ray_objective <=
         eps_primal_infeasible.
   """
   eps_primal_infeasible::Float64
@@ -70,11 +70,11 @@ mutable struct TerminationCriteria
   If the following three conditions hold we say we have obtained an
   approximate primal ray, which is an approximate certificate of dual
   infeasibility.
-  (1) primal_ray_linear_objective < -eps_dual_infeasible,
-  (2) max_primal_ray_infeasibility / (-primal_ray_linear_objective) <
-      eps_dual_infeasible
-  (3) primal_ray_quadratic_norm / (-primal_ray_linear_objective) <
-      eps_dual_infeasible.
+    (1) primal_ray_linear_objective < 0.0,
+    (2) max_primal_ray_infeasibility / (-primal_ray_linear_objective) <=
+        eps_dual_infeasible,
+    (3) primal_ray_quadratic_norm / (-primal_ray_linear_objective) <=
+        eps_dual_infeasible.
   """
   eps_dual_infeasible::Float64
 
@@ -202,10 +202,10 @@ function primal_infeasibility_criteria_met(
   infeasibility_information::InfeasibilityInformation,
 )
   ii = infeasibility_information
-  if ii.dual_ray_objective <= eps_primal_infeasible
+  if ii.dual_ray_objective <= 0.0
     return false
   end
-  return ii.max_dual_ray_infeasibility / ii.dual_ray_objective <
+  return ii.max_dual_ray_infeasibility / ii.dual_ray_objective <=
          eps_primal_infeasible
 end
 
@@ -217,12 +217,12 @@ function dual_infeasibility_criteria_met(
   infeasibility_information::InfeasibilityInformation,
 )
   ii = infeasibility_information
-  if ii.primal_ray_linear_objective >= -eps_dual_infeasible
+  if ii.primal_ray_linear_objective >= 0.0
     return false
   end
-  return ii.max_primal_ray_infeasibility / (-ii.primal_ray_linear_objective) <
+  return ii.max_primal_ray_infeasibility / (-ii.primal_ray_linear_objective) <=
          eps_dual_infeasible &&
-         ii.primal_ray_quadratic_norm / (-ii.primal_ray_linear_objective) <
+         ii.primal_ray_quadratic_norm / (-ii.primal_ray_linear_objective) <=
          eps_dual_infeasible
 end
 
