@@ -1,0 +1,42 @@
+name: CI
+on:
+  push:
+    branches: [main]
+    tags: ["*"]
+  pull_request:
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - version: '1.5'
+            os: ubuntu-latest
+            arch: x64
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: actions/cache@v2
+        env:
+          cache-name: cache-artifacts
+        with:
+          path: ~/.julia/artifacts
+          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-test-${{ env.cache-name }}-
+            ${{ runner.os }}-test-
+            ${{ runner.os }}-
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+        with:
+          depwarn: error
+      - name: "scripts project setup"
+        run: julia --project=$GITHUB_WORKSPACE/scripts -e 'import Pkg; Pkg.instantiate()'
+      - name: "solve_qp.jl test"
+        run: julia --project=$GITHUB_WORKSPACE/scripts $GITHUB_WORKSPACE/scripts/solve_qp.jl --instance_path test/trivial_lp_model.mps --method pdhg --output_dir /tmp
+      - name: "solve_lp_scs.jl test"
+        run: julia --project=$GITHUB_WORKSPACE/scripts $GITHUB_WORKSPACE/scripts/solve_lp_scs.jl --instance_path test/trivial_lp_model.mps --solver scs-indirect --output_dir /tmp
