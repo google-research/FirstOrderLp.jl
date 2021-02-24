@@ -133,7 +133,7 @@ end
     @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-9
 
     @test any(
-      it -> it.restart_used == FirstOrderLp.RESTART_TO_AVERAGE,
+      it -> it.restart_used == FirstOrderLp.RESTART_CHOICE_RESTART_TO_AVERAGE,
       output.iteration_stats,
     )
   end
@@ -156,7 +156,7 @@ end
     @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-9
 
     @test any(
-      it -> it.restart_used == FirstOrderLp.RESTART_TO_AVERAGE,
+      it -> it.restart_used == FirstOrderLp.RESTART_CHOICE_RESTART_TO_AVERAGE,
       output.iteration_stats,
     )
     step_size = output.iteration_stats[1].step_size
@@ -182,7 +182,7 @@ end
     @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-9
 
     @test any(
-      it -> it.restart_used == FirstOrderLp.RESTART_TO_AVERAGE,
+      it -> it.restart_used == FirstOrderLp.RESTART_CHOICE_RESTART_TO_AVERAGE,
       output.iteration_stats,
     )
   end
@@ -204,7 +204,7 @@ end
     @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-9
 
     @test any(
-      it -> it.restart_used == FirstOrderLp.RESTART_TO_AVERAGE,
+      it -> it.restart_used == FirstOrderLp.RESTART_CHOICE_RESTART_TO_AVERAGE,
       output.iteration_stats,
     )
   end

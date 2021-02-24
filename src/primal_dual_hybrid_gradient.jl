@@ -606,7 +606,7 @@ function optimize(
       )
 
       # Update primal_weight
-      if current_iteration_stats.restart_used != NO_RESTART
+      if current_iteration_stats.restart_used != RESTART_CHOICE_NO_RESTART
         primal_weight = compute_new_primal_weight(
           last_restart_info,
           primal_weight,

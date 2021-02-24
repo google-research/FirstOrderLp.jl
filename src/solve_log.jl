@@ -21,19 +21,19 @@ RestartChoice specifies whether a restart was performed on a given iteration.
 # Values
 
 - `RESTART_CHOICE_UNSPECIFIED`: Default value.
-- `NO_RESTART`: No restart on this iteration.
-- `WEIGHTED_AVERAGE_RESET`: The weighted average of iterates is cleared and
-  reset to the current point. Note that from a mathematical perspective this can
-  be equivalently viewed as restarting the algorithm but picking the restart
-  point to be the current iterate.
-- `RESTART_TO_AVERAGE`: The algorithm is restarted at the average of iterates
-  since the last restart.
+- `RESTART_CHOICE_NO_RESTART`: No restart on this iteration.
+- `RESTART_CHOICE_WEIGHTED_AVERAGE_RESET`: The weighted average of iterates is
+  cleared and reset to the current point. Note that from a mathematical
+  perspective this can be equivalently viewed as restarting the algorithm but
+  picking the restart point to be the current iterate.
+- `RESTART_CHOICE_RESTART_TO_AVERAGE`: The algorithm is restarted at the average
+  of iterates since the last restart.
 """
 @enum RestartChoice begin
   RESTART_CHOICE_UNSPECIFIED
-  NO_RESTART
-  WEIGHTED_AVERAGE_RESET
-  RESTART_TO_AVERAGE
+  RESTART_CHOICE_NO_RESTART
+  RESTART_CHOICE_WEIGHTED_AVERAGE_RESET
+  RESTART_CHOICE_RESTART_TO_AVERAGE
 end
 
 """
@@ -277,8 +277,8 @@ mutable struct IterationStats
   cumulative_time_sec::Float64
 
   """
-  The kind of restart that occurred at this iteration, or NO_RESTART if a
-  restart did not occur.
+  The kind of restart that occurred at this iteration, or
+  RESTART_CHOICE_NO_RESTART if a restart did not occur.
   """
   restart_used::RestartChoice
 

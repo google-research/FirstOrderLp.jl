@@ -659,7 +659,7 @@ function run_restart_scheme(
     avg_primal_solution, avg_dual_solution =
       compute_average(solution_weighted_avg)
   else
-    return NO_RESTART
+    return RESTART_CHOICE_NO_RESTART
   end
 
   restart_length = solution_weighted_avg.sum_solutions_count
@@ -753,7 +753,7 @@ function run_restart_scheme(
   end
 
   if !do_restart
-    return NO_RESTART
+    return RESTART_CHOICE_NO_RESTART
   else
     if reset_to_average
       if verbosity >= 4
@@ -792,9 +792,9 @@ function run_restart_scheme(
     )
 
     if reset_to_average
-      return RESTART_TO_AVERAGE
+      return RESTART_CHOICE_RESTART_TO_AVERAGE
     else
-      return WEIGHTED_AVERAGE_RESET
+      return RESTART_CHOICE_WEIGHTED_AVERAGE_RESET
     end
   end
 end
