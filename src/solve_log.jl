@@ -43,17 +43,18 @@ struct; see ConvergenceInformation and InfeasibilityInformation.
 # Values
 
 - `POINT_TYPE_UNSPECIFIED`: Default value.
-- `CURRENT_ITERATE`: Current iterate (x_k, y_k).
-- `ITERATE_DIFFERENCE`: Difference of iterates (x_{k+1} - x_k, y_{k+1} - y_k).
-- `AVERAGE_ITERATE`: Average of iterates since the last restart.
-- `NO_POINT_TYPE`: No specified point.
+- `POINT_TYPE_CURRENT_ITERATE`: Current iterate (x_k, y_k).
+- `POINT_TYPE_ITERATE_DIFFERENCE`: Difference of iterates
+  (x_{k+1} - x_k, y_{k+1} - y_k).
+- `POINT_TYPE_AVERAGE_ITERATE`: Average of iterates since the last restart.
+- `POINT_TYPE_NONE`: There is no corresponding point.
 """
 @enum PointType begin
   POINT_TYPE_UNSPECIFIED
-  CURRENT_ITERATE
-  ITERATE_DIFFERENCE
-  AVERAGE_ITERATE
-  NO_POINT_TYPE
+  POINT_TYPE_CURRENT_ITERATE
+  POINT_TYPE_ITERATE_DIFFERENCE
+  POINT_TYPE_AVERAGE_ITERATE
+  POINT_TYPE_NONE
 end
 
 """

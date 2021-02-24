@@ -529,7 +529,7 @@ function optimize(
         termination_criteria.eps_optimal_relative,
         step_size,
         primal_weight,
-        AVERAGE_ITERATE,
+        POINT_TYPE_AVERAGE_ITERATE,
       )
       method_specific_stats = current_iteration_stats.method_specific_stats
       method_specific_stats["time_spent_doing_basic_algorithm"] =

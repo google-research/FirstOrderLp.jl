@@ -123,7 +123,7 @@ function solve_instance_and_output(
     # solver.
     log.solution_stats = output.iteration_stats[end]
     # TODO: Update this once we return more than one type.
-    log.solution_type = FirstOrderLp.AVERAGE_ITERATE
+    log.solution_type = FirstOrderLp.POINT_TYPE_AVERAGE_ITERATE
 
     summary_output_path = joinpath(output_dir, instance_name * "_summary.json")
     open(summary_output_path, "w") do io
