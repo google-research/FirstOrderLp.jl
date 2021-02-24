@@ -149,7 +149,7 @@
       1e-6,  # eps_optimal_relative
       1.0,  # step_size
       1.0,  # primal_weight
-      FirstOrderLp.CURRENT_ITERATE,
+      FirstOrderLp.POINT_TYPE_CURRENT_ITERATE,
     )
     correct_convergence_info = FirstOrderLp.ConvergenceInformation()
     correct_convergence_info.primal_objective = 1.0
@@ -159,10 +159,11 @@
     correct_convergence_info.l2_primal_variable = 1.0
     correct_convergence_info.l_inf_dual_variable = 2.0
     correct_convergence_info.l2_dual_variable = 2.0
-    correct_convergence_info.candidate_type = FirstOrderLp.CURRENT_ITERATE
+    correct_convergence_info.candidate_type =
+      FirstOrderLp.POINT_TYPE_CURRENT_ITERATE
 
     correct_infeas_info = FirstOrderLp.InfeasibilityInformation()
-    correct_infeas_info.candidate_type = FirstOrderLp.CURRENT_ITERATE
+    correct_infeas_info.candidate_type = FirstOrderLp.POINT_TYPE_CURRENT_ITERATE
 
     correct_stats = FirstOrderLp.IterationStats()
     correct_stats.iteration_number = 5
@@ -209,7 +210,7 @@
       1e-6,  # eps_optimal_relative
       1.0,  # step_size
       1.0,  # primal_weight
-      FirstOrderLp.CURRENT_ITERATE,
+      FirstOrderLp.POINT_TYPE_CURRENT_ITERATE,
     )
     correct_convergence_info = FirstOrderLp.ConvergenceInformation()
     correct_convergence_info.primal_objective = 4.0
@@ -225,11 +226,12 @@
     correct_convergence_info.l2_primal_variable = 2.0
     correct_convergence_info.l_inf_dual_variable = 1.0
     correct_convergence_info.l2_dual_variable = 1.0
-    correct_convergence_info.candidate_type = FirstOrderLp.CURRENT_ITERATE
+    correct_convergence_info.candidate_type =
+      FirstOrderLp.POINT_TYPE_CURRENT_ITERATE
 
     correct_infeas_info = FirstOrderLp.InfeasibilityInformation()
     correct_infeas_info.dual_ray_objective = 9.0
-    correct_infeas_info.candidate_type = FirstOrderLp.CURRENT_ITERATE
+    correct_infeas_info.candidate_type = FirstOrderLp.POINT_TYPE_CURRENT_ITERATE
 
     correct_stats = FirstOrderLp.IterationStats()
     correct_stats.iteration_number = 5
@@ -274,7 +276,7 @@
       1e-6,  # eps_optimal_relative
       1.0,  # step_size
       1.0,  # primal_weight
-      FirstOrderLp.CURRENT_ITERATE,
+      FirstOrderLp.POINT_TYPE_CURRENT_ITERATE,
     )
     correct_convergence_info = FirstOrderLp.ConvergenceInformation()
     correct_convergence_info.primal_objective = -10.0
@@ -286,11 +288,12 @@
     correct_convergence_info.relative_optimality_gap = 10.0 / (1.0 + 10.0)
     correct_convergence_info.l_inf_primal_variable = 10.0
     correct_convergence_info.l2_primal_variable = 10.0
-    correct_convergence_info.candidate_type = FirstOrderLp.CURRENT_ITERATE
+    correct_convergence_info.candidate_type =
+      FirstOrderLp.POINT_TYPE_CURRENT_ITERATE
 
     correct_infeas_info = FirstOrderLp.InfeasibilityInformation()
     correct_infeas_info.primal_ray_linear_objective = -1.0
-    correct_infeas_info.candidate_type = FirstOrderLp.CURRENT_ITERATE
+    correct_infeas_info.candidate_type = FirstOrderLp.POINT_TYPE_CURRENT_ITERATE
 
     correct_stats = FirstOrderLp.IterationStats()
     correct_stats.iteration_number = 5

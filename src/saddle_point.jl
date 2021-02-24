@@ -884,11 +884,11 @@ end
 A simple string name for a PointType.
 """
 function point_type_label(point_type::PointType)
-  if point_type == CURRENT_ITERATE
+  if point_type == POINT_TYPE_CURRENT_ITERATE
     return "current"
-  elseif point_type == AVERAGE_ITERATE
+  elseif point_type == POINT_TYPE_AVERAGE_ITERATE
     return "average"
-  elseif point_type == ITERATE_DIFFERENCE
+  elseif point_type == POINT_TYPE_ITERATE_DIFFERENCE
     return "difference"
   else
     return "unknown PointType"
