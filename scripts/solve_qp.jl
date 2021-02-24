@@ -406,7 +406,7 @@ end
 
 function string_to_restart_scheme(restart_scheme::String)
   if restart_scheme == "no_restart"
-    return FirstOrderLp.NO_RESTART
+    return FirstOrderLp.NO_RESTARTS
   elseif restart_scheme == "adaptive_normalized"
     return FirstOrderLp.ADAPTIVE_NORMALIZED
   elseif restart_scheme == "adaptive_distance"
