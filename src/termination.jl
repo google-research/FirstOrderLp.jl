@@ -31,8 +31,8 @@ mutable struct TerminationCriteria
   optimality_norm::OptimalityNorm
 
   # Let p correspond to the norm we are using as specified by optimality_norm.
-  # If the algorithm terminates with termination_reason = OPTIMAL then the
-  # following hold:
+  # If the algorithm terminates with termination_reason =
+  # TERMINATION_REASON_OPTIMAL then the following hold:
   # | primal_objective - dual_objective | <= eps_optimal_absolute +
   #  eps_optimal_relative * ( | primal_objective | + | dual_objective | )
   # norm(primal_residual, p) <= eps_optimal_absolute + eps_optimal_relative *
@@ -79,19 +79,19 @@ mutable struct TerminationCriteria
   eps_dual_infeasible::Float64
 
   """
-  If termination_reason = TIME_LIMIT then the solver has taken at least
-  time_sec_limit time.
+  If termination_reason = TERMINATION_REASON_TIME_LIMIT then the solver has
+  taken at least time_sec_limit time.
   """
   time_sec_limit::Float64
 
   """
-  If termination_reason = ITERATION_LIMIT then the solver has taken at least
-  iterations_limit iterations.
+  If termination_reason = TERMINATION_REASON_ITERATION_LIMIT then the solver has
+  taken at least iterations_limit iterations.
   """
   iteration_limit::Int32
 
   """
-  If termination_reason = KKT_MATRIX_PASS_LIMIT then
+  If termination_reason = TERMINATION_REASON_KKT_MATRIX_PASS_LIMIT then
   cumulative_kkt_matrix_passes is at least kkt_pass_limit.
   """
   kkt_matrix_pass_limit::Float64
@@ -243,7 +243,7 @@ function check_termination_criteria(
       convergence_information,
       qp_cache,
     )
-      return OPTIMAL
+      return TERMINATION_REASON_OPTIMAL
     end
   end
   for infeasibility_information in iteration_stats.infeasibility_information
@@ -251,39 +251,39 @@ function check_termination_criteria(
       criteria.eps_primal_infeasible,
       infeasibility_information,
     )
-      return PRIMAL_INFEASIBLE
+      return TERMINATION_REASON_PRIMAL_INFEASIBLE
     end
     if dual_infeasibility_criteria_met(
       criteria.eps_dual_infeasible,
       infeasibility_information,
     )
-      return DUAL_INFEASIBLE
+      return TERMINATION_REASON_DUAL_INFEASIBLE
     end
   end
   if iteration_stats.iteration_number >= criteria.iteration_limit
-    return ITERATION_LIMIT
+    return TERMINATION_REASON_ITERATION_LIMIT
   elseif iteration_stats.cumulative_kkt_matrix_passes >=
          criteria.kkt_matrix_pass_limit
-    return KKT_MATRIX_PASS_LIMIT
+    return TERMINATION_REASON_KKT_MATRIX_PASS_LIMIT
   elseif iteration_stats.cumulative_time_sec >= criteria.time_sec_limit
-    return TIME_LIMIT
+    return TERMINATION_REASON_TIME_LIMIT
   else
     return false # Don't terminate.
   end
 end
 
 function termination_reason_to_string(termination_reason::TerminationReason)
-  if termination_reason == OPTIMAL
+  if termination_reason == TERMINATION_REASON_OPTIMAL
     return "Optimal solution found"
-  elseif termination_reason == PRIMAL_INFEASIBLE
+  elseif termination_reason == TERMINATION_REASON_PRIMAL_INFEASIBLE
     return "Primal infeasible"
-  elseif termination_reason == DUAL_INFEASIBLE
+  elseif termination_reason == TERMINATION_REASON_DUAL_INFEASIBLE
     return "Dual infeasible"
-  elseif termination_reason == ITERATION_LIMIT
+  elseif termination_reason == TERMINATION_REASON_ITERATION_LIMIT
     return "Iteration limit reached"
-  elseif termination_reason == TIME_LIMIT
+  elseif termination_reason == TERMINATION_REASON_TIME_LIMIT
     return "Time limit reached"
-  elseif termination_reason == NUMERICAL_ERROR
+  elseif termination_reason == TERMINATION_REASON_NUMERICAL_ERROR
     return "Numerical issues"
   else
     error("Unknown termination reason.")

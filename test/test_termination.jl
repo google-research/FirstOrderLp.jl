@@ -158,7 +158,7 @@
         full_termination_criteria,
         qp_cache,
         iteration_stats_optimal,
-      ) == FirstOrderLp.OPTIMAL
+      ) == FirstOrderLp.TERMINATION_REASON_OPTIMAL
 
       @test !FirstOrderLp.check_termination_criteria(
         full_termination_criteria,
@@ -171,7 +171,7 @@
         full_termination_criteria,
         qp_cache,
         iteration_stats_dont_terminate1,
-      ) == FirstOrderLp.TIME_LIMIT
+      ) == FirstOrderLp.TERMINATION_REASON_TIME_LIMIT
 
       full_termination_criteria.time_sec_limit = 10.0
       full_termination_criteria.iteration_limit = 1
@@ -180,7 +180,7 @@
         full_termination_criteria,
         qp_cache,
         iteration_stats_dont_terminate1,
-      ) == FirstOrderLp.ITERATION_LIMIT
+      ) == FirstOrderLp.TERMINATION_REASON_ITERATION_LIMIT
 
       full_termination_criteria.iteration_limit = 10
       full_termination_criteria.kkt_matrix_pass_limit = 40.0
@@ -188,7 +188,7 @@
         full_termination_criteria,
         qp_cache,
         iteration_stats_dont_terminate1,
-      ) == FirstOrderLp.KKT_MATRIX_PASS_LIMIT
+      ) == FirstOrderLp.TERMINATION_REASON_KKT_MATRIX_PASS_LIMIT
     end
   end
 end

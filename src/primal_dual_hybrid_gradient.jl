@@ -553,7 +553,7 @@ function optimize(
         current_iteration_stats,
       )
       if numerical_error && termination_reason == false
-        termination_reason = NUMERICAL_ERROR
+        termination_reason = TERMINATION_REASON_NUMERICAL_ERROR
       end
 
       # Print table.

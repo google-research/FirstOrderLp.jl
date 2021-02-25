@@ -81,19 +81,19 @@ end
 function extract_termination_reason(jump_model)
   termination_status = JuMP.termination_status(jump_model)
   if termination_status == MOI.OPTIMAL
-    return FirstOrderLp.OPTIMAL
+    return FirstOrderLp.TERMINATION_REASON_OPTIMAL
   elseif termination_status == MOI.INFEASIBLE
-    return FirstOrderLp.PRIMAL_INFEASIBLE
+    return FirstOrderLp.TERMINATION_REASON_PRIMAL_INFEASIBLE
   elseif termination_status == MOI.DUAL_INFEASIBLE
-    return FirstOrderLp.DUAL_INFEASIBLE
+    return FirstOrderLp.TERMINATION_REASON_DUAL_INFEASIBLE
   elseif termination_status == MOI.TIME_LIMIT
-    return FirstOrderLp.TIME_LIMIT
+    return FirstOrderLp.TERMINATION_REASON_TIME_LIMIT
   elseif termination_status == MOI.ITERATION_LIMIT
-    return FirstOrderLp.ITERATION_LIMIT
+    return FirstOrderLp.TERMINATION_REASON_ITERATION_LIMIT
   elseif termination_status == MOI.NUMERICAL_ERROR
-    return FirstOrderLp.NUMERICAL_ERROR
+    return FirstOrderLp.TERMINATION_REASON_NUMERICAL_ERROR
   else
-    return FirstOrderLp.OTHER_TERMINATION_REASON
+    return FirstOrderLp.TERMINATION_REASON_OTHER
   end
 end
 
