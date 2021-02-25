@@ -321,29 +321,29 @@ precise criteria used to check termination.
 # Values
 
 - `TERMINATION_REASON_UNSPECIFIED`: Default value.
-- `OPTIMAL`
-- `PRIMAL_INFEASIBLE`: Note in this situation the dual could be either unbounded
-  or infeasible.
-- `DUAL_INFEASIBLE`: Note in this situation the primal could either unbounded or
-  infeasible.
-- `TIME_LIMIT`
-- `KKT_MATRIX_PASS_LIMIT`
-- `NUMERICAL_ERROR`
-- `INVALID_PROBLEM`: Indicates that the solver detected invalid problem data,
-  e.g., inconsistent bounds.
-- `OTHER_TERMINATION_REASON`
+- `TERMINATION_REASON_OPTIMAL`
+- `TERMINATION_REASON_PRIMAL_INFEASIBLE`: Note in this situation the dual could
+  be either unbounded or infeasible.
+- `TERMINATION_REASON_DUAL_INFEASIBLE`: Note in this situation the primal could
+  either unbounded or infeasible.
+- `TERMINATION_REASON_TIME_LIMIT`
+- `TERMINATION_REASON_KKT_MATRIX_PASS_LIMIT`
+- `TERMINATION_REASON_NUMERICAL_ERROR`
+- `TERMINATION_REASON_INVALID_PROBLEM`: Indicates that the solver detected
+  invalid problem data, e.g., inconsistent bounds.
+- `TERMINATION_REASON_OTHER`
 """
 @enum TerminationReason begin
   TERMINATION_REASON_UNSPECIFIED
-  OPTIMAL
-  PRIMAL_INFEASIBLE
-  DUAL_INFEASIBLE
-  TIME_LIMIT
-  ITERATION_LIMIT
-  KKT_MATRIX_PASS_LIMIT
-  NUMERICAL_ERROR
-  INVALID_PROBLEM
-  OTHER_TERMINATION_REASON
+  TERMINATION_REASON_OPTIMAL
+  TERMINATION_REASON_PRIMAL_INFEASIBLE
+  TERMINATION_REASON_DUAL_INFEASIBLE
+  TERMINATION_REASON_TIME_LIMIT
+  TERMINATION_REASON_ITERATION_LIMIT
+  TERMINATION_REASON_KKT_MATRIX_PASS_LIMIT
+  TERMINATION_REASON_NUMERICAL_ERROR
+  TERMINATION_REASON_INVALID_PROBLEM
+  TERMINATION_REASON_OTHER
 end
 
 mutable struct SolveLog
@@ -386,11 +386,12 @@ mutable struct SolveLog
 
   """
   The type of the output point. This type specifies the information entry that
-  prompted termination. If TerminationReason is OPTIMAL, this type matches the
-  PointType of the ConvergenceInformation entry (in solution_stats) that caused
-  termination. Similarly, if TerminationReason is either PRIMAL_INFEASIBLE or
-  DUAL_INFEASIBLE this type identifies the InfeasibilityInformation entry that
-  caused termination.
+  prompted termination. If TerminationReason is TERMINATION_REASON_OPTIMAL, this
+  type matches the PointType of the ConvergenceInformation entry (in
+  solution_stats) that caused termination. Similarly, if TerminationReason is
+  either TERMINATION_REASON_PRIMAL_INFEASIBLE or
+  TERMINATION_REASON_DUAL_INFEASIBLE this type identifies the
+  InfeasibilityInformation entry that caused termination.
   """
   solution_type::PointType
 

@@ -80,7 +80,7 @@ end
     problem = example_lp()
     parameters.termination_criteria.eps_optimal_absolute = 1e-8
     output = FirstOrderLp.optimize(parameters, problem)
-    @test output.termination_reason == FirstOrderLp.OPTIMAL
+    @test output.termination_reason == FirstOrderLp.TERMINATION_REASON_OPTIMAL
   end
   @testset "Test Verbosity" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
@@ -223,7 +223,7 @@ end
     problem.objective_vector = [0.0, 0.0, 0.0, 0.0]
     parameters.termination_criteria.eps_optimal_absolute = 1e-8
     output = FirstOrderLp.optimize(parameters, problem)
-    @test output.termination_reason == FirstOrderLp.OPTIMAL
+    @test output.termination_reason == FirstOrderLp.TERMINATION_REASON_OPTIMAL
   end
 
   @testset "use_approximate_localized_duality_gap = true" begin
@@ -241,7 +241,7 @@ end
     problem.objective_vector = [0.0, 0.0, 0.0, 0.0]
     parameters.termination_criteria.eps_optimal_absolute = 1e-8
     output = FirstOrderLp.optimize(parameters, problem)
-    @test output.termination_reason == FirstOrderLp.OPTIMAL
+    @test output.termination_reason == FirstOrderLp.TERMINATION_REASON_OPTIMAL
   end
 
   @testset "Quadratic Programming 1" begin
@@ -362,7 +362,7 @@ end
     problem.right_hand_side[3] = 8
     output = FirstOrderLp.optimize(parameters, problem)
     final_stats = output.iteration_stats[end]
-    @test output.termination_reason == FirstOrderLp.PRIMAL_INFEASIBLE
+    @test output.termination_reason == FirstOrderLp.TERMINATION_REASON_PRIMAL_INFEASIBLE
   end
   @testset "LP without bounds" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
@@ -409,7 +409,7 @@ end
     problem = example_cc_lp()
     output = FirstOrderLp.optimize(parameters, problem)
     # Numerical error occurs because no convergence tolerances are set.
-    @test output.termination_reason == FirstOrderLp.NUMERICAL_ERROR
+    @test output.termination_reason == FirstOrderLp.TERMINATION_REASON_NUMERICAL_ERROR
     tol = 1e-14
     @test output.primal_solution ≈ [1.0; 1.0; 0.0; 1.0; 0.0; 0.0] atol = tol
     final_stats = output.iteration_stats[end]
