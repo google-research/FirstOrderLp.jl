@@ -1,7 +1,5 @@
 # FirstOrderLp.jl
 
-**This is not an official Google product.**
-
 ## Introduction
 
 This repository contains experimental code for solving linear and quadratic
@@ -152,3 +150,7 @@ submitting changes:
 ```shell
 $ julia --project=formatter -e 'using JuliaFormatter; format(".")'
 ```
+
+## Disclaimer
+
+This is not an official Google product.
