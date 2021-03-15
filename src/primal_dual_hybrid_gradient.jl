@@ -464,16 +464,6 @@ function optimize(
   # schemes and termination evaluation.
   time_spent_doing_basic_algorithm = 0.0
 
-  # For restart scheme
-  if params.restart_params.restart_scheme == NO_RESTARTS
-    # In approximately every 10% of the iterations the solution is averaged.
-    # However, this averaging process could get of sync with the number of
-    # iterations. This variable makes sure that if we hit the maximum number
-    # of iterations the point returned is an average of at least the last 10%
-    # of iterations.
-    final_avg = false
-  end
-
   # This variable is used in the adaptive restart scheme.
   last_restart_info = create_last_restart_info(
     problem,
