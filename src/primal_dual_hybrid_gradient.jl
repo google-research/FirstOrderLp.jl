@@ -645,9 +645,11 @@ function optimize(
     # for the above minimization and the cases where g(x) is infinite - there
     # isn't officially any projection step in the algorithm.
 
-    primal_gradient =
-      problem.objective_matrix * current_primal_solution .+
-      problem.objective_vector .- current_dual_product
+    primal_gradient = compute_primal_gradient_from_dual_product(
+      problem,
+      current_primal_solution,
+      current_dual_product,
+    )
 
     next_primal =
       current_primal_solution .- primal_gradient ./ primal_norm_params

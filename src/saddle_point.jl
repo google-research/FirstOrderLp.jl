@@ -1039,8 +1039,20 @@ function compute_primal_gradient(
   primal_solution::AbstractVector{Float64},
   dual_solution::AbstractVector{Float64},
 )
+  return compute_primal_gradient_from_dual_product(
+    problem,
+    primal_solution,
+    problem.constraint_matrix' * dual_solution,
+  )
+end
+
+function compute_primal_gradient_from_dual_product(
+  problem::QuadraticProgrammingProblem,
+  primal_solution::AbstractVector{Float64},
+  dual_product::AbstractVector{Float64},
+)
   return problem.objective_matrix * primal_solution .+
-         problem.objective_vector .- problem.constraint_matrix' * dual_solution
+         problem.objective_vector .- dual_product
 end
 
 function compute_dual_gradient(
