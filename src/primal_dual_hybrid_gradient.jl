@@ -383,6 +383,8 @@ function optimize(
   end
   current_primal_solution = zeros(primal_size)
   current_dual_solution = zeros(dual_size)
+  # A cache of constraint_matrix' * current_dual_solution.
+  current_dual_product = zeros(primal_size)
   solution_weighted_avg = initialize_solution_weighted_average(
     length(current_primal_solution),
     length(current_dual_solution),
@@ -595,7 +597,6 @@ function optimize(
         params.restart_params,
       )
 
-      # Update primal_weight
       if current_iteration_stats.restart_used != RESTART_CHOICE_NO_RESTART
         primal_weight = compute_new_primal_weight(
           last_restart_info,
@@ -603,6 +604,11 @@ function optimize(
           primal_weight_update_smoothing,
           params.verbosity,
         )
+      end
+      if current_iteration_stats.restart_used ==
+         RESTART_CHOICE_RESTART_TO_AVERAGE
+        current_dual_product =
+          problem.constraint_matrix' * current_dual_solution
       end
     end
 
@@ -629,11 +635,12 @@ function optimize(
     # for the above minimization and the cases where g(x) is infinite - there
     # isn't officially any projection step in the algorithm.
 
-    primal_gradient = compute_primal_gradient(
+    primal_gradient = compute_primal_gradient_from_dual_product(
       problem,
       current_primal_solution,
-      current_dual_solution,
+      current_dual_product,
     )
+
     next_primal =
       current_primal_solution .- primal_gradient ./ primal_norm_params
     project_primal!(next_primal, problem)
@@ -646,6 +653,7 @@ function optimize(
     )
     next_dual = current_dual_solution .+ dual_gradient ./ dual_norm_params
     project_dual!(next_dual, problem)
+    next_dual_product = problem.constraint_matrix' * next_dual
 
     delta_primal = next_primal .- current_primal_solution
     delta_dual = next_dual .- current_dual_solution
@@ -661,15 +669,11 @@ function optimize(
       numerical_error = true
       continue
     end
-    # TODO: compute this using vector ops and cached values for
-    # problem.constraint_matrix' * current_dual_solution and
-    # problem.constraint_matrix' * next_dual. Thus we only need two
-    # matrix-vector products per iteration, not three.
     primal_objective_interaction =
       0.5 * (delta_primal' * problem.objective_matrix * delta_primal) -
       0.5 * weighted_norm(delta_primal, diagonal_objective_matrix)^2
     primal_dual_interaction =
-      delta_primal' * problem.constraint_matrix' * delta_dual
+      delta_primal' * (next_dual_product .- current_dual_product)
     interaction =
       abs(primal_dual_interaction) + abs(primal_objective_interaction)
 
@@ -696,6 +700,7 @@ function optimize(
     if required_ratio <= 1
       current_primal_solution = next_primal
       current_dual_solution = next_dual
+      current_dual_product = next_dual_product
 
       weight = step_size
       add_to_solution_weighted_average(
