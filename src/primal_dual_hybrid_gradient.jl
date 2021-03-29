@@ -15,26 +15,20 @@
 """
 A PdhgParameters struct specifies the parameters for solving the saddle
 point formulation of an problem using primal-dual hybrid gradient.
-
 Quadratic Programming Problem (see quadratic_programming.jl):
 minimize 1/2 * x' * objective_matrix * x + objective_vector' * x
          + objective_constant
-
 s.t. constraint_matrix[1:num_equalities, :] * x =
      right_hand_side[1:num_equalities]
-
      constraint_matrix[(num_equalities + 1):end, :] * x >=
      right_hand_side[(num_equalities + 1):end, :]
-
      variable_lower_bound <= x <= variable_upper_bound
-
 We use notation from Chambolle and Pock, "On the ergodic convergence rates of a
 first-order primal-dual algorithm"
 (http://www.optimization-online.org/DB_FILE/2014/09/4532.pdf).
 That paper doesn't explicitly use the terminology "primal-dual hybrid gradient"
 but their Theorem 1 is analyzing PDHG. In this file "Theorem 1" without further
 reference refers to that paper.
-
 Our problem is equivalent to the saddle point problem:
     min_x max_y L(x, y)
 where
@@ -45,10 +39,8 @@ where
            otherwise infinity
     h*(y) = -right_hand_side' y if y[(num_equalities + 1):end] >= 0
                                 otherwise infinity
-
 Note that the places where g(x) and h*(y) are infinite effectively limits the
 domain of the min and max. Therefore there's no infinity in the code.
-
 Here we use Q as the abbreviation of objective_matrix. We use mirror map
 1/2 ||x||_X^2 + 1/2 ||y||_Y^2, where X and Y are diagonal matrices.
 If `diagonal_scaling`=l1, we set
@@ -84,6 +76,7 @@ overrelaxed and intertial variants in Chambolle and Pock and the algorithm in
 Saddle Point Problems" by Bingsheng He, Feng Ma, Xiaoming Yuan
 (http://www.optimization-online.org/DB_FILE/2016/02/5315.pdf).
 """
+
 struct PdhgParameters
   """
   One of the supported steps: {rescale-columns, ruiz, l2-ruiz, none}.
@@ -135,18 +128,89 @@ struct PdhgParameters
 end
 
 """
+A PdhgSolverState struct specifies the state of the solver.
+It is used to pass information among the main solver function and other helper functions.
+"""
+mutable struct PdhgSolverState
+  """
+  Current primal solution.
+  """
+  current_primal_solution::Vector{Float64}
+
+  """
+  Current dual solution.
+  """
+  current_dual_solution::Vector{Float64}
+
+  """
+  Current primal delta. That is current_primal_solution - previous_primal_solution.
+  """
+  delta_primal::Vector{Float64}
+
+  """
+  Current dual delta. That is current_dual_solution - previous_dual_solution.
+  """
+  delta_dual::Vector{Float64}
+
+  """
+  A cache of constraint_matrix' * current_dual_solution.
+  """
+  current_dual_product::Vector{Float64}
+
+  solution_weighted_avg::SolutionWeightedAverage
+
+  """
+  Current step size.
+  """
+  step_size::Float64
+
+  """
+  Current primal weight.
+  """
+  primal_weight::Float64
+
+  """
+  True only if the solver didn't move in the previous iteration.
+  """
+  numerical_error::Bool
+
+  """
+  Number of KKT passes so far.
+  """
+  cumulative_kkt_passes::Float64
+
+  """
+  Total number of iterations. This includes inner iterations.
+  """
+  total_number_iterations::Int32
+end
+
+"""
+Cached information about the objective and constrained matrices.
+"""
+struct MatrixInformation
+  diagonal_objective_matrix::Vector{Float64}
+  row_norm_objective_matrix::Vector{Float64}
+  row_norm_constraint_matrix::Vector{Float64}
+  column_norm_constraint_matrix::Vector{Float64}
+end
+
+"""
 Defines the primal norm and dual norm using the norms of matrices, step_size
 and primal_weight.
 """
 function define_norms(
   diagonal_scaling::String,
-  diagonal_objective_matrix,
-  row_norm_objective_matrix::Vector{Float64},
-  row_norm_constraint_matrix::Vector{Float64},
-  column_norm_constraint_matrix::Vector{Float64},
+  matrix_information::MatrixInformation,
   step_size::Float64,
   primal_weight::Float64,
 )
+  diagonal_objective_matrix = matrix_information.diagonal_objective_matrix
+  row_norm_objective_matrix = matrix_information.row_norm_objective_matrix
+  row_norm_constraint_matrix = matrix_information.row_norm_constraint_matrix
+  column_norm_constraint_matrix =
+    matrix_information.column_norm_constraint_matrix
+
   if diagonal_scaling == "l2"
     # If `diagonal_scaling`=l2, we set X[i,i]=||K[:,i]||_2 and
     # Y[j,j]=||K[j,:]||_2
@@ -335,6 +399,234 @@ function estimate_maximum_singular_value(
   return sqrt(dot(x, matrix' * (matrix * x)) / norm(x, 2)^2),
   number_of_power_iterations
 end
+
+function compute_next_primal_solution(
+  problem::QuadraticProgrammingProblem,
+  current_primal_solution::Vector{Float64},
+  current_dual_product::Vector{Float64},
+  primal_norm_params::Vector{Float64},
+)
+  # The next lines compute the primal portion of the PDHG algorithm:
+  # argmin_x [gradient(f)(current_primal_solution)'x + g(x)
+  #          + current_dual_solution' K x
+  #          + 0.5*norm_X(x - current_primal_solution)^2]
+  # See Sections 2-3 of Chambolle and Pock and the comment above
+  # PdhgParameters.
+  # This minimization is easy to do in closed form since it can be separated
+  # into independent problems for each of the primal variables. The
+  # projection onto the primal feasibility set comes from the closed form
+  # for the above minimization and the cases where g(x) is infinite - there
+  # isn't officially any projection step in the algorithm.
+  primal_gradient = compute_primal_gradient_from_dual_product(
+    problem,
+    current_primal_solution,
+    current_dual_product,
+  )
+
+  next_primal = current_primal_solution .- primal_gradient ./ primal_norm_params
+  project_primal!(next_primal, problem)
+  return next_primal
+end
+
+function compute_next_dual_solution(
+  problem::QuadraticProgrammingProblem,
+  current_primal_solution::Vector{Float64},
+  next_primal::Vector{Float64},
+  current_dual_solution::Vector{Float64},
+  dual_norm_params::Vector{Float64},
+)
+  # The next two lines compute the dual portion:
+  # argmin_y [H*(y) - y' K (2.0*next_primal - current_primal_solution)
+  #           + 0.5*norm_Y(y-current_dual_solution)^2]
+  dual_gradient =
+    compute_dual_gradient(problem, 2.0 * next_primal - current_primal_solution)
+  next_dual = current_dual_solution .+ dual_gradient ./ dual_norm_params
+  project_dual!(next_dual, problem)
+  next_dual_product = problem.constraint_matrix' * next_dual
+  return next_dual, next_dual_product
+end
+
+function update_solver_state!(
+  solver_state::PdhgSolverState,
+  next_primal::Vector{Float64},
+  next_dual::Vector{Float64},
+  next_dual_product::Vector{Float64},
+  step_size::Float64,
+)
+
+  solver_state.delta_primal = next_primal - solver_state.current_primal_solution
+  solver_state.delta_dual = next_dual - solver_state.current_dual_solution
+  solver_state.current_primal_solution = next_primal
+  solver_state.current_dual_solution = next_dual
+  solver_state.step_size = step_size
+  current_dual_product = next_dual_product
+
+  weight = solver_state.step_size
+  add_to_solution_weighted_average(
+    solver_state.solution_weighted_avg,
+    solver_state.current_primal_solution,
+    solver_state.current_dual_solution,
+    weight,
+  )
+end
+
+"""
+Takes a step using the adaptive step size.
+"""
+function take_adaptive_step!(
+  params::PdhgParameters,
+  problem::QuadraticProgrammingProblem,
+  solver_state::PdhgSolverState,
+  matrix_information::MatrixInformation,
+)
+  KKT_PASSES_PER_ITERATION = 1.0
+
+  step_size = solver_state.step_size
+  done = false
+  iter = 0
+
+  while !done
+    iter += 1
+    solver_state.total_number_iterations += 1
+    primal_norm_params, dual_norm_params = define_norms(
+      params.diagonal_scaling,
+      matrix_information,
+      step_size,
+      solver_state.primal_weight,
+    )
+    if iter < 60 && solver_state.total_number_iterations <= 65
+      print(primal_norm_params)
+      print("\n")
+    end
+
+    next_primal = compute_next_primal_solution(
+      problem,
+      solver_state.current_primal_solution,
+      solver_state.current_dual_product,
+      primal_norm_params,
+    )
+
+    next_dual, next_dual_product = compute_next_dual_solution(
+      problem,
+      solver_state.current_primal_solution,
+      next_primal,
+      solver_state.current_dual_solution,
+      dual_norm_params,
+    )
+    delta_primal = next_primal .- solver_state.current_primal_solution
+    delta_dual = next_dual .- solver_state.current_dual_solution
+
+
+    primal_objective_interaction =
+      0.5 * (delta_primal' * problem.objective_matrix * delta_primal) -
+      0.5 *
+      weighted_norm(
+        delta_primal,
+        matrix_information.diagonal_objective_matrix,
+      )^2
+    primal_dual_interaction =
+      delta_primal' * (next_dual_product .- solver_state.current_dual_product)
+    interaction =
+      abs(primal_dual_interaction) + abs(primal_objective_interaction)
+
+    solver_state.cumulative_kkt_passes += KKT_PASSES_PER_ITERATION
+
+    movement =
+      0.5 *
+      weighted_norm(
+        delta_primal,
+        primal_norm_params - matrix_information.diagonal_objective_matrix,
+      )^2 + 0.5 * weighted_norm(delta_dual, dual_norm_params)^2
+    if movement == 0.0
+      # The algorithm will terminate at the beginning of the next iteration
+      solver_state.numerical_error = true
+      break
+    end
+    # The proof of Theorem 1 requires movement >= interaction.
+    required_ratio = interaction / movement
+
+    if required_ratio <= 1
+      update_solver_state!(
+        solver_state,
+        next_primal,
+        next_dual,
+        next_dual_product,
+        step_size,
+      )
+      done = true
+    end
+
+    exponent_one = 0.3
+    exponent_two = 0.6
+    # Our step sizes are a factor
+    # 1 - (iteration + 1)^(-exponent_one)/required_ratio
+    # smaller than they could be as a margin to reduce rejected steps.
+    first_term =
+      (1 - (solver_state.total_number_iterations + 1)^(-exponent_one)) /
+      required_ratio * step_size
+    second_term =
+      (1 + (solver_state.total_number_iterations + 1)^(-exponent_two)) *
+      step_size
+    # From the first term when we have to reject a step, the step_size
+    # decreases by a factor of at least 1 - (iteration + 1)^(-exponent_one).
+    # From the second term we increase the step_size by a factor of at most
+    # 1 + (iteration + 1)^(-exponent_two)
+    # Therefore if more than order
+    # (iteration + 1)^(exponent_one - exponent_two)
+    # fraction of the iterations have a rejected step we overall decrease the
+    # step_size. When the step_size is below the inverse of the max singular
+    # value we stop having rejected steps.
+    step_size = min(first_term, second_term)
+  end
+  print(iter)
+  print("\n")
+  # TODO: Decide if we want to update here.
+  solver_state.step_size = step_size
+end
+
+"""
+Takes a step with constant step size.
+"""
+function take_constant_step_size_step!(
+  params::PdhgParameters,
+  problem::QuadraticProgrammingProblem,
+  solver_state::PdhgSolverState,
+  matrix_information::MatrixInformation,
+)
+  KKT_PASSES_PER_ITERATION = 1.0
+  primal_norm_params, dual_norm_params = define_norms(
+    params.diagonal_scaling,
+    matrix_information,
+    solver_state.step_size,
+    solver_state.primal_weight,
+  )
+  next_primal = compute_next_primal_solution(
+    problem,
+    solver_state.current_primal_solution,
+    solver_state.current_dual_product,
+    primal_norm_params,
+  )
+
+  next_dual, next_dual_product = compute_next_dual_solution(
+    problem,
+    solver_state.current_primal_solution,
+    next_primal,
+    solver_state.current_dual_solution,
+    dual_norm_params,
+  )
+
+  solver_state.cumulative_kkt_passes += KKT_PASSES_PER_ITERATION
+  update_solver_state!(
+    solver_state,
+    next_primal,
+    next_dual,
+    next_dual_product,
+    step_size,
+  )
+
+  # TODO: Decide if we want to check for movement == 0.0 here.
+end
+
 """
 `optimize(params::PdhgParameters,
           original_problem::QuadraticProgrammingProblem)`
@@ -366,10 +658,23 @@ function optimize(
 
   # TODO: Correctly account for the number of kkt passes in
   # initialization
-  cumulative_kkt_passes = 0.0
+  solver_state = PdhgSolverState(
+    zeros(primal_size),  # current_primal_solution
+    zeros(dual_size),    # current_dual_solution
+    zeros(primal_size),  # delta_primal
+    zeros(dual_size),    # delta_dual
+    zeros(primal_size),  # current_dual_product
+    initialize_solution_weighted_average(primal_size, dual_size),
+    0.0,                 # step_size
+    1.0,                 # primal_weight
+    false,               # numerical_error
+    0.0,                 # cumulative_kkt_passes
+    0,                   # total_number_iterations
+  )
+
   if params.adaptive_step_size
-    cumulative_kkt_passes += 0.5
-    step_size = 1.0 / norm(problem.constraint_matrix, Inf)
+    solver_state.cumulative_kkt_passes += 0.5
+    solver_state.step_size = 1.0 / norm(problem.constraint_matrix, Inf)
   else
     desired_relative_error = 0.2
     maximum_singular_value, number_of_power_iterations =
@@ -378,22 +683,14 @@ function optimize(
         probability_of_failure = 0.001,
         desired_relative_error = desired_relative_error,
       )
-    step_size = (1 - desired_relative_error) / maximum_singular_value
-    cumulative_kkt_passes += number_of_power_iterations
+    solver_state.step_size =
+      (1 - desired_relative_error) / maximum_singular_value
+    solver_state.cumulative_kkt_passes += number_of_power_iterations
   end
-  current_primal_solution = zeros(primal_size)
-  current_dual_solution = zeros(dual_size)
-  # A cache of constraint_matrix' * current_dual_solution.
-  current_dual_product = zeros(primal_size)
-  solution_weighted_avg = initialize_solution_weighted_average(
-    length(current_primal_solution),
-    length(current_dual_solution),
-  )
+
+
   iterations_completed = 0
 
-  # This excludes the pass to compute the interaction term, because it can
-  # be removed.
-  KKT_PASSES_PER_ITERATION = 1.0
   # Idealized number of KKT passes each time the termination criteria and
   # restart scheme is run. One of these comes from evaluating the gradient at
   # the average solution and evaluating the gradient at the current solution.
@@ -430,16 +727,19 @@ function optimize(
     row_norm_constraint_matrix = ones(primal_size)
     column_norm_constraint_matrix = ones(dual_size)
   end
-  original_primal_norm_params, original_dual_norm_params = define_norms(
-    params.diagonal_scaling,
+  matrix_information = MatrixInformation(
     diagonal_objective_matrix,
     row_norm_objective_matrix,
     row_norm_constraint_matrix,
     column_norm_constraint_matrix,
-    step_size,
+  )
+  original_primal_norm_params, original_dual_norm_params = define_norms(
+    params.diagonal_scaling,
+    matrix_information,
+    solver_state.step_size,
     1.0,
   )
-  primal_weight = select_initial_primal_weight(
+  solver_state.primal_weight = select_initial_primal_weight(
     problem,
     original_primal_norm_params,
     original_dual_norm_params,
@@ -452,12 +752,9 @@ function optimize(
 
   primal_norm_params, dual_norm_params = define_norms(
     params.diagonal_scaling,
-    diagonal_objective_matrix,
-    row_norm_objective_matrix,
-    row_norm_constraint_matrix,
-    column_norm_constraint_matrix,
-    step_size,
-    primal_weight,
+    matrix_information,
+    solver_state.step_size,
+    solver_state.primal_weight,
   )
 
   iteration_stats = IterationStats[]
@@ -469,8 +766,8 @@ function optimize(
   # This variable is used in the adaptive restart scheme.
   last_restart_info = create_last_restart_info(
     problem,
-    current_primal_solution,
-    current_dual_solution,
+    solver_state.current_primal_solution,
+    solver_state.current_dual_solution,
   )
 
   # For termination criteria:
@@ -480,7 +777,7 @@ function optimize(
 
   # This flag represents whether a numerical error occurred during the algorithm
   # if it is set to true it will trigger the algorithm to terminate.
-  numerical_error = false
+  solver_state.numerical_error = false
   display_iteration_stats_heading(params.verbosity)
 
   iteration = 0
@@ -493,18 +790,20 @@ function optimize(
     if mod(iteration - 1, termination_evaluation_frequency) == 0 ||
        iteration == iteration_limit + 1 ||
        iteration <= 10 ||
-       numerical_error
+       solver_state.numerical_error
       # TODO: Experiment with evaluating every power of two iterations.
       # This ensures that we do sufficient primal weight updates in the initial
       # stages of the algorithm.
-      cumulative_kkt_passes += KKT_PASSES_PER_TERMINATION_EVALUATION
+      solver_state.cumulative_kkt_passes +=
+        KKT_PASSES_PER_TERMINATION_EVALUATION
       # Compute the average solution since the last restart point.
-      if numerical_error || solution_weighted_avg.sum_solutions_count == 0
-        avg_primal_solution = current_primal_solution
-        avg_dual_solution = current_dual_solution
+      if solver_state.numerical_error ||
+         solver_state.solution_weighted_avg.sum_solutions_count == 0
+        avg_primal_solution = solver_state.current_primal_solution
+        avg_dual_solution = solver_state.current_dual_solution
       else
         avg_primal_solution, avg_dual_solution =
-          compute_average(solution_weighted_avg)
+          compute_average(solver_state.solution_weighted_avg)
       end
 
       current_iteration_stats = evaluate_unscaled_iteration_stats(
@@ -516,11 +815,11 @@ function optimize(
         avg_dual_solution,
         iteration,
         time() - start_time,
-        cumulative_kkt_passes,
+        solver_state.cumulative_kkt_passes,
         termination_criteria.eps_optimal_absolute,
         termination_criteria.eps_optimal_relative,
-        step_size,
-        primal_weight,
+        solver_state.step_size,
+        solver_state.primal_weight,
         POINT_TYPE_AVERAGE_ITERATE,
       )
       method_specific_stats = current_iteration_stats.method_specific_stats
@@ -544,7 +843,7 @@ function optimize(
         qp_cache,
         current_iteration_stats,
       )
-      if numerical_error && termination_reason == false
+      if solver_state.numerical_error && termination_reason == false
         termination_reason = TERMINATION_REASON_NUMERICAL_ERROR
       end
 
@@ -585,100 +884,35 @@ function optimize(
 
       current_iteration_stats.restart_used = run_restart_scheme(
         problem,
-        solution_weighted_avg,
-        current_primal_solution,
-        current_dual_solution,
+        solver_state.solution_weighted_avg,
+        solver_state.current_primal_solution,
+        solver_state.current_dual_solution,
         last_restart_info,
         iterations_completed,
         primal_norm_params,
         dual_norm_params,
-        primal_weight,
+        solver_state.primal_weight,
         params.verbosity,
         params.restart_params,
       )
 
       if current_iteration_stats.restart_used != RESTART_CHOICE_NO_RESTART
-        primal_weight = compute_new_primal_weight(
+        solver_state.primal_weight = compute_new_primal_weight(
           last_restart_info,
-          primal_weight,
+          solver_state.primal_weight,
           primal_weight_update_smoothing,
           params.verbosity,
         )
       end
       if current_iteration_stats.restart_used ==
          RESTART_CHOICE_RESTART_TO_AVERAGE
-        current_dual_product =
+        solver_state.current_dual_product =
           problem.constraint_matrix' * current_dual_solution
       end
     end
 
-    primal_norm_params, dual_norm_params = define_norms(
-      params.diagonal_scaling,
-      diagonal_objective_matrix,
-      row_norm_objective_matrix,
-      row_norm_constraint_matrix,
-      column_norm_constraint_matrix,
-      step_size,
-      primal_weight,
-    )
-
     time_spent_doing_basic_algorithm_checkpoint = time()
-    # The next lines compute the primal portion of the PDHG algorithm:
-    # argmin_x [gradient(f)(current_primal_solution)'x + g(x)
-    #          + current_dual_solution' K x
-    #          + 0.5*norm_X(x - current_primal_solution)^2]
-    # See Sections 2-3 of Chambolle and Pock and the comment above
-    # PdhgParameters.
-    # This minimization is easy to do in closed form since it can be separated
-    # into independent problems for each of the primal variables. The
-    # projection onto the primal feasibility set comes from the closed form
-    # for the above minimization and the cases where g(x) is infinite - there
-    # isn't officially any projection step in the algorithm.
 
-    primal_gradient = compute_primal_gradient_from_dual_product(
-      problem,
-      current_primal_solution,
-      current_dual_product,
-    )
-
-    next_primal =
-      current_primal_solution .- primal_gradient ./ primal_norm_params
-    project_primal!(next_primal, problem)
-    # The next two lines compute the dual portion:
-    # argmin_y [H*(y) - y' K (2.0*next_primal - current_primal_solution)
-    #           + 0.5*norm_Y(y-current_dual_solution)^2]
-    dual_gradient = compute_dual_gradient(
-      problem,
-      2.0 * next_primal - current_primal_solution,
-    )
-    next_dual = current_dual_solution .+ dual_gradient ./ dual_norm_params
-    project_dual!(next_dual, problem)
-    next_dual_product = problem.constraint_matrix' * next_dual
-
-    delta_primal = next_primal .- current_primal_solution
-    delta_dual = next_dual .- current_dual_solution
-
-    movement =
-      0.5 *
-      weighted_norm(
-        delta_primal,
-        primal_norm_params - diagonal_objective_matrix,
-      )^2 + 0.5 * weighted_norm(delta_dual, dual_norm_params)^2
-    if movement == 0.0
-      # The algorithm will terminate at the beginning of the next iteration
-      numerical_error = true
-      continue
-    end
-    primal_objective_interaction =
-      0.5 * (delta_primal' * problem.objective_matrix * delta_primal) -
-      0.5 * weighted_norm(delta_primal, diagonal_objective_matrix)^2
-    primal_dual_interaction =
-      delta_primal' * (next_dual_product .- current_dual_product)
-    interaction =
-      abs(primal_dual_interaction) + abs(primal_objective_interaction)
-
-    # The proof of Theorem 1 requires movement >= interaction.
-    required_ratio = interaction / movement
     if params.verbosity >= 6 && print_to_screen_this_iteration(
       false, # termination_reason
       iteration,
@@ -688,53 +922,30 @@ function optimize(
       pdhg_specific_log(
         problem,
         iteration,
-        current_primal_solution,
-        current_dual_solution,
+        solver_state.current_primal_solution,
+        solver_state.current_dual_solution,
         original_primal_norm_params,
         original_dual_norm_params,
-        step_size,
+        solver_state.step_size,
         required_ratio,
-        primal_weight,
-      )
-    end
-    if required_ratio <= 1
-      current_primal_solution = next_primal
-      current_dual_solution = next_dual
-      current_dual_product = next_dual_product
-
-      weight = step_size
-      add_to_solution_weighted_average(
-        solution_weighted_avg,
-        current_primal_solution,
-        current_dual_solution,
-        weight,
+        solver_state.primal_weight,
       )
     end
 
     if params.adaptive_step_size
-      exponent_one = 0.3
-      exponent_two = 0.6
-      # Our step sizes are a factor
-      # 1 - (iteration + 1)^(-exponent_one)/required_ratio
-      # smaller than they could be as a margin to reduce rejected steps.
-      first_term =
-        (1 - (iteration + 1)^(-exponent_one)) / required_ratio * step_size
-      second_term = (1 + (iteration + 1)^(-exponent_two)) * step_size
-      # From the first term when we have to reject a step, the step_size
-      # decreases by a factor of at least 1 - (iteration + 1)^(-exponent_one).
-      # From the second term we increase the step_size by a factor of at most
-      # 1 + (iteration + 1)^(-exponent_two)
-      # Therefore if more than order
-      # (iteration + 1)^(exponent_one - exponent_two)
-      # fraction of the iterations have a rejected step we overall decrease the
-      # step_size. When the step_size is below the inverse of the max singular
-      # value we stop having rejected steps.
-      step_size = min(first_term, second_term)
+      take_adaptive_step!(params, problem, solver_state, matrix_information)
+    else
+      take_constant_step_size_step!(
+        params,
+        problem,
+        solver_state,
+        matrix_information,
+      )
     end
+
     iterations_completed += 1
 
     time_spent_doing_basic_algorithm +=
       time() - time_spent_doing_basic_algorithm_checkpoint
-    cumulative_kkt_passes += KKT_PASSES_PER_ITERATION
   end
 end
