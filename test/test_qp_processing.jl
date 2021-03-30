@@ -617,10 +617,14 @@
     constraint_matrix = problem.constraint_matrix
     objective_matrix = problem.objective_matrix
 
-    inf_norm_of_columns = vec(sqrt.(max.(
-      maximum(abs.(constraint_matrix), dims = 1),
-      maximum(abs.(objective_matrix), dims = 1),
-    )))
+    inf_norm_of_columns = vec(
+      sqrt.(
+        max.(
+          maximum(abs.(constraint_matrix), dims = 1),
+          maximum(abs.(objective_matrix), dims = 1),
+        ),
+      ),
+    )
     @test all(inf_norm_of_columns .≈ 1)
     inf_norm_of_rows = vec(sqrt.(maximum(abs.(constraint_matrix), dims = 2)))
     @test all(inf_norm_of_rows .≈ 1)
@@ -752,10 +756,14 @@
     constraint_matrix = problem.constraint_matrix
     objective_matrix = problem.objective_matrix
 
-    norm_of_columns = vec(sqrt.(sqrt.(
-      FirstOrderLp.l2_norm(constraint_matrix, 1) .^ 2 +
-      FirstOrderLp.l2_norm(objective_matrix, 1) .^ 2,
-    )))
+    norm_of_columns = vec(
+      sqrt.(
+        sqrt.(
+          FirstOrderLp.l2_norm(constraint_matrix, 1) .^ 2 +
+          FirstOrderLp.l2_norm(objective_matrix, 1) .^ 2,
+        ),
+      ),
+    )
     @test norm_of_columns ≈ [1, 1] atol = 1e-5
     norm_of_rows = FirstOrderLp.l2_norm(problem.constraint_matrix, 2)
     @test norm_of_rows ≈ [sqrt(2 / 5), sqrt(2 / 5), sqrt(2 / 5)] atol = 1e-5
