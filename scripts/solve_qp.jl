@@ -428,7 +428,9 @@ function string_to_restart_to_current_metric(restart_to_current_metric::String)
   elseif restart_to_current_metric == "gap_over_distance_squared"
     return FirstOrderLp.GAP_OVER_DISTANCE_SQUARED
   else
-    error("Unknown value for restart_to_current_metric $(restart_to_current_metric)")
+    error(
+      "Unknown value for restart_to_current_metric $(restart_to_current_metric)",
+    )
   end
 end
 
@@ -445,7 +447,9 @@ function main()
   if parsed_args["method"] == "mirror-prox" || parsed_args["method"] == "pdhg"
     restart_params = FirstOrderLp.construct_restart_parameters(
       string_to_restart_scheme(parsed_args["restart_scheme"]),
-      string_to_restart_to_current_metric(parsed_args["restart_to_current_metric"]),
+      string_to_restart_to_current_metric(
+        parsed_args["restart_to_current_metric"],
+      ),
       parsed_args["restart_frequency"],
       parsed_args["artificial_restart_threshold"],
       parsed_args["sufficient_reduction_for_restart"],
@@ -501,7 +505,7 @@ function main()
       )
     end
   else
-    error("`method` arg must be either `mirror-prox` or `pdhg`.",)
+    error("`method` arg must be either `mirror-prox` or `pdhg`.")
   end
 
   solve_instance_and_output(

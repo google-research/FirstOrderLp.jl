@@ -155,8 +155,8 @@ function remove_empty_columns(problem::QuadraticProgrammingProblem)
   # TODO: Adapt the implementation for quadratic objectives.
   @assert iszero(problem.objective_matrix)
   is_empty_column = [
-    isempty(nzrange(problem.constraint_matrix, col))
-    for col in 1:size(problem.constraint_matrix, 2)
+    isempty(nzrange(problem.constraint_matrix, col)) for
+    col in 1:size(problem.constraint_matrix, 2)
   ]
   empty_columns = findall(is_empty_column)
   if isempty(empty_columns)
@@ -378,8 +378,8 @@ function rescale_norm_of_columns_to_1(problem::QuadraticProgrammingProblem)
 
   norm_of_columns = vec(l2_norm(problem.constraint_matrix, 1))
   is_empty_column = [
-    isempty(nzrange(problem.constraint_matrix, col))
-    for col in 1:size(problem.constraint_matrix, 2)
+    isempty(nzrange(problem.constraint_matrix, col)) for
+    col in 1:size(problem.constraint_matrix, 2)
   ]
   empty_columns = findall(is_empty_column)
   is_non_empty = .!is_empty_column
@@ -456,8 +456,8 @@ function ruiz_rescaling(
 )
   is_empty_column = [
     isempty(nzrange(problem.constraint_matrix, col)) &
-    isempty(nzrange(problem.objective_matrix, col))
-    for col in 1:size(problem.constraint_matrix, 2)
+    isempty(nzrange(problem.objective_matrix, col)) for
+    col in 1:size(problem.constraint_matrix, 2)
   ]
   empty_columns = findall(is_empty_column)
   is_non_empty = .!is_empty_column
@@ -470,15 +470,24 @@ function ruiz_rescaling(
     objective_matrix = problem.objective_matrix
 
     if p == Inf
-      variable_rescaling = vec(sqrt.(max.(
-        maximum(abs.(constraint_matrix), dims = 1),
-        maximum(abs.(objective_matrix), dims = 1),
-      )))
+      variable_rescaling = vec(
+        sqrt.(
+          max.(
+            maximum(abs.(constraint_matrix), dims = 1),
+            maximum(abs.(objective_matrix), dims = 1),
+          ),
+        ),
+      )
     else
       @assert p == 2
-      variable_rescaling = vec(sqrt.(sqrt.(
-        l2_norm(constraint_matrix, 1) .^ 2 + l2_norm(objective_matrix, 1) .^ 2,
-      )))
+      variable_rescaling = vec(
+        sqrt.(
+          sqrt.(
+            l2_norm(constraint_matrix, 1) .^ 2 +
+            l2_norm(objective_matrix, 1) .^ 2,
+          ),
+        ),
+      )
     end
 
     problem.objective_vector[is_non_empty] ./= variable_rescaling[is_non_empty]

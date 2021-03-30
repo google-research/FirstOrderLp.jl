@@ -182,14 +182,16 @@ function qps_reader_to_standard_form(
     sparse(obj_row_index, obj_col_index, obj_value, mps.nvar, mps.nvar)
   @assert mps.objsense == :notset
 
-  return transform_to_standard_form(TwoSidedQpProblem(
-    mps.lvar,
-    mps.uvar,
-    mps.lcon,
-    mps.ucon,
-    constraint_matrix,
-    mps.c0,
-    mps.c,
-    objective_matrix,
-  ))
+  return transform_to_standard_form(
+    TwoSidedQpProblem(
+      mps.lvar,
+      mps.uvar,
+      mps.lcon,
+      mps.ucon,
+      constraint_matrix,
+      mps.c0,
+      mps.c,
+      objective_matrix,
+    ),
+  )
 end

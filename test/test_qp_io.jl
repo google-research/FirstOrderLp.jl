@@ -35,18 +35,16 @@ const TRIVIAL_QP_MODEL = FirstOrderLp.QuadraticProgrammingProblem(
 )
 
 @testset "Read .mps file (LP)" begin
-  qp = FirstOrderLp.qps_reader_to_standard_form(joinpath(
-    dirname(@__FILE__),
-    "trivial_lp_model.mps",
-  ))
+  qp = FirstOrderLp.qps_reader_to_standard_form(
+    joinpath(dirname(@__FILE__), "trivial_lp_model.mps"),
+  )
   test_fields_equal(qp, TRIVIAL_LP_MODEL)
 end
 
 @testset "Read .mps file (QP)" begin
-  qp = FirstOrderLp.qps_reader_to_standard_form(joinpath(
-    dirname(@__FILE__),
-    "trivial_qp_model.mps",
-  ))
+  qp = FirstOrderLp.qps_reader_to_standard_form(
+    joinpath(dirname(@__FILE__), "trivial_qp_model.mps"),
+  )
   test_fields_equal(qp, TRIVIAL_QP_MODEL)
 end
 
