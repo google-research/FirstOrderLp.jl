@@ -297,7 +297,7 @@ end
     )
     problem = example_lp()
     output = FirstOrderLp.optimize(parameters, problem)
-    @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-9
+    @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-8
     @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-9
   end
   @testset "Quadratic Programming 1 restart_scheme=ADAPTIVE_NORMALIZED" begin
