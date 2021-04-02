@@ -13,7 +13,8 @@
 # limitations under the License.
 
 function generate_mirror_prox_params(;
-  preprocessing_scaling,
+  l_inf_ruiz_iterations = 0,
+  l2_norm_rescaling = false,
   primal_importance,
   diagonal_scaling,
   verbosity,
@@ -40,7 +41,8 @@ function generate_mirror_prox_params(;
     use_approximate_localized_duality_gap,
   )
   parameters = FirstOrderLp.MirrorProxParameters(
-    preprocessing_scaling,
+    l_inf_ruiz_iterations,
+    l2_norm_rescaling,
     primal_importance,
     diagonal_scaling,
     verbosity,
@@ -55,7 +57,6 @@ end
 @testset "Saddle point mirror prox" begin
   @testset "Low precision" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "off",
       verbosity = 0,
@@ -70,7 +71,6 @@ end
   end
   @testset "Test Verbosity" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "off",
       verbosity = 10,
@@ -91,7 +91,6 @@ end
   end
   @testset "record_iteration_stats = false" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "off",
       verbosity = 0,
@@ -107,7 +106,6 @@ end
   end
   @testset "Quadratic Programming 1" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "l1",
       verbosity = 0,
@@ -122,7 +120,6 @@ end
   end
   @testset "Quadratic Programming 2" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "l1",
       verbosity = 0,
@@ -136,9 +133,9 @@ end
     @test output.dual_solution ≈ [0.0] atol = 1.0e-4
   end
   @testset "Testing Preprocessing" begin
-    @testset "l2-ruiz" begin
+    @testset "l2 norm rescaling" begin
       parameters = generate_mirror_prox_params(
-        preprocessing_scaling = "l2-ruiz",
+        l2_norm_rescaling = true,
         primal_importance = 1.0,
         diagonal_scaling = "l1",
         verbosity = 0,
@@ -153,22 +150,7 @@ end
     end
     @testset "ruiz" begin
       parameters = generate_mirror_prox_params(
-        preprocessing_scaling = "ruiz",
-        primal_importance = 1.0,
-        diagonal_scaling = "l1",
-        verbosity = 0,
-        iteration_limit = 400,
-        restart_scheme = FirstOrderLp.NO_RESTARTS,
-        restart_frequency_if_fixed = 1000,
-      )
-      problem = example_qp2()
-      output = FirstOrderLp.optimize(parameters, problem)
-      @test output.primal_solution ≈ [0.25; 0.0] atol = 1.0e-4
-      @test output.dual_solution ≈ [0.0] atol = 1.0e-4
-    end
-    @testset "rescale-columns" begin
-      parameters = generate_mirror_prox_params(
-        preprocessing_scaling = "rescale-columns",
+        l_inf_ruiz_iterations = 10,
         primal_importance = 1.0,
         diagonal_scaling = "l1",
         verbosity = 0,
@@ -184,7 +166,6 @@ end
   end
   @testset "diagonal_scaling=l2" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "l2",
       verbosity = 0,
@@ -199,7 +180,6 @@ end
   end
   @testset "diagonal_scaling=l1" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "l1",
       verbosity = 0,
@@ -214,7 +194,6 @@ end
   end
   @testset "restart_scheme=ADAPTIVE_NORMALIZED" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       iteration_limit = 700,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -228,7 +207,6 @@ end
   end
   @testset "restart_scheme=adaptive_distance" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       iteration_limit = 700,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -242,7 +220,6 @@ end
   end
   @testset "restart_scheme=adaptive_localized" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       iteration_limit = 750,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -256,7 +233,6 @@ end
   end
   @testset "restart_to_current_metric = no_restart_to_current" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       iteration_limit = 700,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -271,7 +247,6 @@ end
   end
   @testset "use_approximate_localized_duality_gap = true" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       iteration_limit = 800,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -287,7 +262,6 @@ end
   end
   @testset "restart_scheme=fixed_frequency" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       iteration_limit = 600,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -302,7 +276,6 @@ end
   end
   @testset "Quadratic Programming 1 restart_scheme=ADAPTIVE_NORMALIZED" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       iteration_limit = 1000,
       primal_importance = 1.0,
       diagonal_scaling = "l1",
@@ -317,7 +290,6 @@ end
   end
   @testset "Quadratic Programming 2 restart_scheme=fixed_frequency" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       iteration_limit = 1000,
       primal_importance = 1.0,
       diagonal_scaling = "l1",
@@ -332,7 +304,6 @@ end
   end
   @testset "High precision" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "off",
       verbosity = 0,
@@ -347,7 +318,6 @@ end
   end
   @testset "Primal infeasible instance" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "off",
       verbosity = 0,
@@ -364,7 +334,6 @@ end
   end
   @testset "Primal infeasible instance 2" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "off",
       verbosity = 0,
@@ -384,7 +353,6 @@ end
     # TODO: Convergence on this problem is really slow, even though it
     # is easy. Find out why.
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "off",
       verbosity = 0,
@@ -403,7 +371,6 @@ end
   end
   @testset "LP without bounds" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "off",
       verbosity = 0,
@@ -421,7 +388,6 @@ end
   # variables either at a bound or in a wide range.
   @testset "Correlation Clustering: triangle plus" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "off",
       verbosity = 0,
@@ -450,7 +416,6 @@ end
   end
   @testset "Correlation Clustering: star" begin
     parameters = generate_mirror_prox_params(
-      preprocessing_scaling = "none",
       primal_importance = 1.0,
       diagonal_scaling = "off",
       verbosity = 0,
