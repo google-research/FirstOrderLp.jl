@@ -379,6 +379,47 @@
     test_fields_approx_equal(problem, original_problem)
   end
 
+  @testset "Ruiz Rescaling for LP with empty row and column" begin
+    problem = FirstOrderLp.linear_programming_problem(
+      [-1.0, -1.0],                 # variable_lower_bound
+      [1.0, 2.0],                   # variable_upper_bound
+      [1.0, 2.0],                   # objective_vector
+      0.0,                          # objective_constant
+      [
+        2.0 0.0
+        0.0 0.0
+      ],                            # constraint_matrix
+      [1.0, 1.0],                   # right_hand_side
+      1,                            # num_equalities
+    )
+    original_problem = deepcopy(problem)
+    cum_constraint_rescaling, cum_variable_rescaling =
+      FirstOrderLp.ruiz_rescaling(problem, 1)
+    test_fields_approx_equal(
+      problem,
+      FirstOrderLp.linear_programming_problem(
+        [-sqrt(2), -1.0],           # variable_lower_bound
+        [sqrt(2), 2.0],             # variable_upper_bound
+        [1 / sqrt(2), 2.0],         # objective_vector
+        0.0,                        # objective_constant
+        [
+          1.0 0.0
+          0.0 0.0
+        ],                          # constraint_matrix
+        [1 / sqrt(2), 1.0],         # right_hand_side
+        1,                          # num_equalities
+      ),
+    )
+    @test cum_variable_rescaling ≈ [sqrt(2), 1.0]
+    @test cum_constraint_rescaling ≈ [sqrt(2), 1.0]
+    FirstOrderLp.unscale_problem(
+      problem,
+      cum_constraint_rescaling,
+      cum_variable_rescaling,
+    )
+    test_fields_approx_equal(problem, original_problem)
+  end
+
   @testset "Convergence of Ruiz-Rescaling for LP" begin
     problem = FirstOrderLp.linear_programming_problem(
       [0.0, 0.0],                   # variable_lower_bound

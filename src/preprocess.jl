@@ -382,9 +382,8 @@ end
 """
 Uses a modified Ruiz rescaling algorithm to rescale the matrix M=[Q,A';A,0]
 where Q is objective_matrix and A is constraint_matrix, and returns the
-cumulative scaling vectors. Requires that the constraint matrix have no
-zero rows. More details of Ruiz rescaling algorithm can be found at:
-http://www.numerical.rl.ac.uk/reports/drRAL2001034.pdf.
+cumulative scaling vectors. More details of Ruiz rescaling algorithm can be
+found at: http://www.numerical.rl.ac.uk/reports/drRAL2001034.pdf.
 
 Ruiz rescaling finds two diagonal matrices D (i.e. diag(cum_variable_rescaling))
 and E (i.e. diag(cum_constraint_rescaling)), and effectively rescales the QP by
@@ -428,13 +427,6 @@ function ruiz_rescaling(
   num_iterations::Int64,
   p::Float64 = Inf,
 )
-  is_empty_column = [
-    isempty(nzrange(problem.constraint_matrix, col)) &
-    isempty(nzrange(problem.objective_matrix, col)) for
-    col in 1:size(problem.constraint_matrix, 2)
-  ]
-  empty_columns = findall(is_empty_column)
-  is_non_empty = .!is_empty_column
   num_constraints, num_variables = size(problem.constraint_matrix)
   cum_constraint_rescaling = ones(num_constraints)
   cum_variable_rescaling = ones(num_variables)
@@ -463,16 +455,15 @@ function ruiz_rescaling(
         ),
       )
     end
+    variable_rescaling[iszero.(variable_rescaling)] .= 1.0
 
-    problem.objective_vector[is_non_empty] ./= variable_rescaling[is_non_empty]
-    problem.variable_upper_bound[is_non_empty] .*=
-      variable_rescaling[is_non_empty]
-    problem.variable_lower_bound[is_non_empty] .*=
-      variable_rescaling[is_non_empty]
-    problem.objective_matrix[is_non_empty, is_non_empty] =
-      Diagonal(1 ./ variable_rescaling[is_non_empty]) *
-      problem.objective_matrix[is_non_empty, is_non_empty] *
-      Diagonal(1 ./ variable_rescaling[is_non_empty])
+    problem.objective_vector ./= variable_rescaling
+    problem.variable_upper_bound .*= variable_rescaling
+    problem.variable_lower_bound .*= variable_rescaling
+    problem.objective_matrix =
+      Diagonal(1 ./ variable_rescaling) *
+      problem.objective_matrix *
+      Diagonal(1 ./ variable_rescaling)
 
     if length(problem.right_hand_side) != 0
       if p == Inf
@@ -493,18 +484,16 @@ function ruiz_rescaling(
         end
         constraint_rescaling = vec(sqrt.(norm_of_rows / target_row_norm))
       end
-      if any(iszero, constraint_rescaling)
-        error("Empty rows must be removed prior to calling this function.")
-      end
+      constraint_rescaling[iszero.(constraint_rescaling)] .= 1.0
       problem.right_hand_side ./= constraint_rescaling
-      problem.constraint_matrix[:, is_non_empty] =
+      problem.constraint_matrix =
         Diagonal(1 ./ constraint_rescaling) *
-        constraint_matrix[:, is_non_empty] *
-        Diagonal(1 ./ variable_rescaling[is_non_empty])
+        constraint_matrix *
+        Diagonal(1 ./ variable_rescaling)
     end
 
     cum_constraint_rescaling .*= constraint_rescaling
-    cum_variable_rescaling[is_non_empty] .*= variable_rescaling[is_non_empty]
+    cum_variable_rescaling .*= variable_rescaling
   end
 
   return cum_constraint_rescaling, cum_variable_rescaling
