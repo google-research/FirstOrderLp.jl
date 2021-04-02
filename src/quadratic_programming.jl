@@ -196,7 +196,8 @@ function print_problem_details(qp::QuadraticProgrammingProblem)
       "largest=%f, smallest=%f, avg=%f\n",
       maximum(abs, nonzeros(qp.objective_matrix)),
       minimum(abs, nonzeros(qp.objective_matrix)),
-      sum(abs, nonzeros(qp.objective_matrix)) / length(nonzeros(qp.constraint_matrix))
+      sum(abs, nonzeros(qp.objective_matrix)) /
+      length(nonzeros(qp.constraint_matrix))
     )
   end
 

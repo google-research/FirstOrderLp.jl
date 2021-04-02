@@ -339,8 +339,9 @@ end
 
 
 """
-Rescales a linear programming problem such that the l2 norm of each row of the
-constraints is 1 and returns the scaling vectors in the same format as
+Rescales a quadratic programming problem by dividing each row and column of the
+constraint matrix by the sqrt its respective L2 norm, adjusting the other
+problem data accordingly. Returns the scaling vectors in the same format as
 `ruiz_rescaling`.
 
 # Arguments
@@ -348,35 +349,13 @@ constraints is 1 and returns the scaling vectors in the same format as
   problem. Must have no empty rows. This is modified to store the transformed
   problem.
 """
-function rescale_norm_of_rows_to_1(problem::QuadraticProgrammingProblem)
-  @assert iszero(problem.objective_matrix)
+function l2_norm_rescaling(problem::QuadraticProgrammingProblem)
   num_constraints, num_variables = size(problem.constraint_matrix)
-  if length(problem.right_hand_side) != 0
-    norm_of_rows = l2_norm(problem.constraint_matrix, 2)
-    if any(iszero, norm_of_rows)
-      error("Empty rows must be removed prior to calling this function.")
-    end
-    problem.right_hand_side ./= vec(norm_of_rows)
-    problem.constraint_matrix =
-      Diagonal(1 ./ vec(norm_of_rows)) * problem.constraint_matrix
-  end
 
-  return vec(norm_of_rows), ones(num_variables)
-end
-
-"""
-Rescales a linear programming problem such that the l2 norm of each column of
-the constraints (including upper bound of variable) is 1, and returns the
-scaling vectors in the same format as `ruiz_rescaling`. Empty columns are
-left unchanged.
-
-# Arguments
-- `problem::QuadraticProgrammingProblem`: the original quadratic
-  programming problem. This is modified to store the transformed problem.
-"""
-function rescale_norm_of_columns_to_1(problem::QuadraticProgrammingProblem)
-
+  norm_of_rows = vec(l2_norm(problem.constraint_matrix, 2))
   norm_of_columns = vec(l2_norm(problem.constraint_matrix, 1))
+
+  column_rescale_factor = sqrt.(norm_of_columns)
   is_empty_column = [
     isempty(nzrange(problem.constraint_matrix, col)) for
     col in 1:size(problem.constraint_matrix, 2)
@@ -384,25 +363,29 @@ function rescale_norm_of_columns_to_1(problem::QuadraticProgrammingProblem)
   empty_columns = findall(is_empty_column)
   is_non_empty = .!is_empty_column
   num_constraints, num_variables = size(problem.constraint_matrix)
-  cum_constraint_rescaling = ones(num_constraints)
-  cum_variable_rescaling = ones(num_variables)
+  column_rescale_factor[is_empty_column] .= 1.0
 
-  problem.objective_vector[is_non_empty] ./= norm_of_columns[is_non_empty]
-  problem.variable_lower_bound[is_non_empty] .*= norm_of_columns[is_non_empty]
-  problem.variable_upper_bound[is_non_empty] .*= norm_of_columns[is_non_empty]
-  problem.objective_matrix[is_non_empty, is_non_empty] =
-    Diagonal(1 ./ norm_of_columns[is_non_empty]) *
-    problem.objective_matrix[is_non_empty, is_non_empty] *
-    Diagonal(1 ./ norm_of_columns[is_non_empty])
+  problem.objective_vector ./= column_rescale_factor
+  problem.variable_lower_bound .*= column_rescale_factor
+  problem.variable_upper_bound .*= column_rescale_factor
+  problem.objective_matrix =
+    Diagonal(1 ./ column_rescale_factor) *
+    problem.objective_matrix *
+    Diagonal(1 ./ column_rescale_factor)
 
   if length(problem.right_hand_side) != 0
-    problem.constraint_matrix[:, is_non_empty] =
-      problem.constraint_matrix[:, is_non_empty] *
-      Diagonal(1 ./ norm_of_columns[is_non_empty])
+    if any(iszero, norm_of_rows)
+      error("Empty rows must be removed prior to calling this function.")
+    end
+    row_rescale_factor = sqrt.(norm_of_rows)
+    problem.right_hand_side ./= row_rescale_factor
+    problem.constraint_matrix =
+      Diagonal(1 ./ row_rescale_factor) *
+      problem.constraint_matrix *
+      Diagonal(1 ./ column_rescale_factor)
   end
 
-  cum_variable_rescaling[is_non_empty] .*= norm_of_columns[is_non_empty]
-  return cum_constraint_rescaling, cum_variable_rescaling
+  return row_rescale_factor, column_rescale_factor
 end
 
 """
@@ -537,8 +520,8 @@ function ruiz_rescaling(
 end
 
 """
-Recovers the original problem from the scaled problem and the scaling vectors.
-This function should be only used for testing.
+Recovers the original problem from the scaled problem and the scaling vectors
+in place. This function should be only used for testing.
 """
 function unscale_problem(
   problem::QuadraticProgrammingProblem,
@@ -557,6 +540,7 @@ function unscale_problem(
     Diagonal(constraint_rescaling) *
     problem.constraint_matrix *
     Diagonal(variable_rescaling)
+  return
 end
 
 
@@ -597,10 +581,13 @@ end
 
 
 """Preprocesses the original problem, and returns a ScaledQpProblem struct.
-The `rescaling` can take value from {rescale-rows, rescale-columns, ruiz,
-l2-ruiz, none}. The `problem` is not modified."""
+Applies L_inf Ruiz rescaling for `l_inf_ruiz_iterations` iterations. If
+`l2_norm_rescaling` is true, applies L2 norm rescaling. `problem` is not
+modified.
+"""
 function rescale_problem(
-  rescaling::String,
+  l_inf_ruiz_iterations::Int,
+  l2_norm_rescaling::Bool,
   verbosity::Int64,
   problem::QuadraticProgrammingProblem,
 )
@@ -610,24 +597,21 @@ function rescale_problem(
     print_problem_details(original_problem)
   end
 
-  if rescaling == "rescale-rows"
-    constraint_rescaling, variable_rescaling =
-      FirstOrderLp.rescale_norm_of_rows_to_1(problem)
-  elseif rescaling == "rescale-columns"
-    constraint_rescaling, variable_rescaling =
-      FirstOrderLp.rescale_norm_of_columns_to_1(problem)
-  elseif rescaling == "ruiz"
-    constraint_rescaling, variable_rescaling =
-      FirstOrderLp.ruiz_rescaling(problem, 10, Inf)
-  elseif rescaling == "l2-ruiz"
-    constraint_rescaling, variable_rescaling =
-      FirstOrderLp.ruiz_rescaling(problem, 10, 2.0)
-  elseif rescaling == "none"
-    num_constraints, num_variables = size(problem.constraint_matrix)
-    constraint_rescaling = ones(num_constraints)
-    variable_rescaling = ones(num_variables)
-  else
-    error("Unknown rescaling step '$step'")
+  num_constraints, num_variables = size(problem.constraint_matrix)
+  constraint_rescaling = ones(num_constraints)
+  variable_rescaling = ones(num_variables)
+
+  if l_inf_ruiz_iterations > 0
+    con_rescale, var_rescale =
+      FirstOrderLp.ruiz_rescaling(problem, l_inf_ruiz_iterations, Inf)
+    constraint_rescaling .*= con_rescale
+    variable_rescaling .*= var_rescale
+  end
+
+  if l2_norm_rescaling
+    con_rescale, var_rescale = FirstOrderLp.l2_norm_rescaling(problem)
+    constraint_rescaling .*= con_rescale
+    variable_rescaling .*= var_rescale
   end
 
   scaled_problem = ScaledQpProblem(
@@ -638,10 +622,12 @@ function rescale_problem(
   )
 
   if verbosity >= 3
-    if rescaling == "none"
+    if l_inf_ruiz_iterations == 0 && !l2_norm_rescaling
       println("No rescaling.")
     else
-      println("Problem after $rescaling rescaling:")
+      print("Problem after rescaling ")
+      print("(Ruiz iterations = $l_inf_ruiz_iterations, ")
+      println("l2_norm_rescaling = $l2_norm_rescaling):")
       print_problem_details(scaled_problem.scaled_qp)
     end
   end

@@ -13,7 +13,8 @@
 # limitations under the License.
 
 function generate_primal_dual_hybrid_gradient_params(;
-  rescaling = "none",
+  l_inf_ruiz_iterations = 0,
+  l2_norm_rescaling = false,
   iteration_limit = 200,
   primal_importance = 1.0,
   diagonal_scaling = "off",
@@ -42,7 +43,8 @@ function generate_primal_dual_hybrid_gradient_params(;
     use_approximate_localized_duality_gap,
   )
   parameters = FirstOrderLp.PdhgParameters(
-    rescaling,
+    l_inf_ruiz_iterations,
+    l2_norm_rescaling,
     primal_importance,
     diagonal_scaling,
     adaptive_step_size,
@@ -58,7 +60,6 @@ end
 @testset "Primal-dual hybrid gradient" begin
   @testset "Low precision" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 300,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -71,7 +72,6 @@ end
   end
   @testset "Terminate with optimal solution" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 1000,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -84,7 +84,6 @@ end
   end
   @testset "Test Verbosity" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 300,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -103,7 +102,6 @@ end
   end
   @testset "Test Fixed Frequency Restart" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 500,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -119,7 +117,6 @@ end
   end
   @testset "Test Adaptive Restart Heuristic" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 600,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -140,7 +137,6 @@ end
 
   @testset "Test adaptive_step_size=false, no smoothing" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 700,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -167,7 +163,6 @@ end
 
   @testset "Test restart_to_current_metric = no_restart_to_current" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 600,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -189,7 +184,6 @@ end
 
   @testset "Test restart_to_current_metric = gap_over_distance" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 600,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -211,7 +205,6 @@ end
 
   @testset "Test Adaptive Restart" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 200,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -228,7 +221,6 @@ end
 
   @testset "use_approximate_localized_duality_gap = true" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 300,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -246,7 +238,6 @@ end
 
   @testset "Quadratic Programming 1" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 200,
       primal_importance = 1.0,
       diagonal_scaling = "l1",
@@ -259,7 +250,6 @@ end
   end
   @testset "Quadratic Programming 2" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 200,
       primal_importance = 1.0,
       diagonal_scaling = "l1",
@@ -271,9 +261,9 @@ end
     @test output.dual_solution ≈ [0.0] atol = 1.0e-4
   end
   @testset "Test Preprocessing" begin
-    @testset "l2-ruiz" begin
+    @testset "l2 norm rescaling" begin
       parameters = generate_primal_dual_hybrid_gradient_params(
-        rescaling = "l2-ruiz",
+        l2_norm_rescaling = true,
         iteration_limit = 200,
         primal_importance = 1.0,
         diagonal_scaling = "l1",
@@ -286,20 +276,7 @@ end
     end
     @testset "ruiz" begin
       parameters = generate_primal_dual_hybrid_gradient_params(
-        rescaling = "ruiz",
-        iteration_limit = 200,
-        primal_importance = 1.0,
-        diagonal_scaling = "l1",
-        verbosity = 0,
-      )
-      problem = example_qp2()
-      output = FirstOrderLp.optimize(parameters, problem)
-      @test output.primal_solution ≈ [0.25; 0.0] atol = 1.0e-4
-      @test output.dual_solution ≈ [0.0] atol = 1.0e-4
-    end
-    @testset "rescale-columns" begin
-      parameters = generate_primal_dual_hybrid_gradient_params(
-        rescaling = "rescale-columns",
+        l_inf_ruiz_iterations = 10,
         iteration_limit = 200,
         primal_importance = 1.0,
         diagonal_scaling = "l1",
@@ -313,7 +290,6 @@ end
   end
   @testset "diagonal_scaling=l2" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 300,
       primal_importance = 1.0,
       diagonal_scaling = "l2",
@@ -326,7 +302,6 @@ end
   end
   @testset "diagonal_scaling=l1" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 300,
       primal_importance = 1.0,
       diagonal_scaling = "l1",
@@ -339,7 +314,6 @@ end
   end
   @testset "High precision" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 800,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -352,7 +326,6 @@ end
   end
   @testset "Infeasible instance" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 800,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -367,7 +340,6 @@ end
   end
   @testset "LP without bounds" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 400,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -380,7 +352,6 @@ end
   end
   @testset "Correlation Clustering: triangle plus" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 15,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -401,7 +372,6 @@ end
   end
   @testset "Numerical error" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 150,
       primal_importance = 1.0,
       diagonal_scaling = "off",
@@ -425,7 +395,6 @@ end
   end
   @testset "Correlation Clustering: star" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
-      rescaling = "none",
       iteration_limit = 100,
       primal_importance = 1.0,
       diagonal_scaling = "off",

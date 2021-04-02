@@ -190,13 +190,17 @@ function parse_command_line()
     arg_type = String
     required = true
 
-    "--rescaling"
+    "--l_inf_ruiz_iterations"
     help =
-      "Zero or more comma-separated rescaling steps. Supported " *
-      "steps: {rescale-rows, rescale-columns, ruiz, l2-ruiz, none}. " *
-      "The default is none, but this may change."
-    arg_type = String
-    default = "ruiz"
+      "Number of l_infinity Ruiz rescaling iterations to apply to the " *
+      "constraint matrix. Zero disables this rescaling pass."
+    arg_type = Int
+    default = 10
+
+    "--l2_norm_rescaling"
+    help = "If true, applies L2 norm rescaling after Ruiz rescaling."
+    arg_type = Bool
+    default = true
 
     "--primal_importance"
     help =
@@ -281,7 +285,7 @@ function parse_command_line()
       "define the Bregman distance or equivalently it rescales the primal " *
       "and dual variables individually."
     arg_type = String
-    default = "l2"
+    default = "off"
 
     "--restart_scheme"
     help =
@@ -438,12 +442,6 @@ end
 function main()
   parsed_args = parse_command_line()
 
-  if parsed_args["rescaling"] == "default"
-    rescaling_steps::Vector{String} = []
-  else
-    rescaling_steps = split(parsed_args["rescaling"], ",", keepempty = false)
-  end
-
   if parsed_args["method"] == "mirror-prox" || parsed_args["method"] == "pdhg"
     restart_params = FirstOrderLp.construct_restart_parameters(
       string_to_restart_scheme(parsed_args["restart_scheme"]),
@@ -482,7 +480,8 @@ function main()
 
     if parsed_args["method"] == "mirror-prox"
       parameters = FirstOrderLp.MirrorProxParameters(
-        parsed_args["rescaling"],
+        parsed_args["l_inf_ruiz_iterations"],
+        parsed_args["l2_norm_rescaling"],
         parsed_args["primal_importance"],
         parsed_args["diagonal_scaling"],
         parsed_args["verbosity"],
@@ -493,7 +492,8 @@ function main()
       )
     elseif parsed_args["method"] == "pdhg"
       parameters = FirstOrderLp.PdhgParameters(
-        parsed_args["rescaling"],
+        parsed_args["l_inf_ruiz_iterations"],
+        parsed_args["l2_norm_rescaling"],
         parsed_args["primal_importance"],
         parsed_args["diagonal_scaling"],
         parsed_args["adaptive_step_size"],
