@@ -281,8 +281,8 @@ function parse_command_line()
 
     "--diagonal_scaling"
     help =
-      "Supported {off, l1, l2}. We use a diagonal matrix to " *
-      "define the Bregman distance or equivalently it rescales the primal " *
+      "Supported {off, l1, l2}. Use a diagonal matrix to " *
+      "define the Bregman distance or, equivalently, rescale the primal " *
       "and dual variables individually."
     arg_type = String
     default = "off"

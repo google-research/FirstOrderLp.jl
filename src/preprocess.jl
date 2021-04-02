@@ -346,8 +346,7 @@ problem data accordingly. Returns the scaling vectors in the same format as
 
 # Arguments
 - `problem::QuadraticProgrammingProblem`: The input quadratic programming
-  problem. Must have no empty rows. This is modified to store the transformed
-  problem.
+  problem. This is modified to store the transformed problem.
 """
 function l2_norm_rescaling(problem::QuadraticProgrammingProblem)
   num_constraints, num_variables = size(problem.constraint_matrix)
@@ -355,15 +354,10 @@ function l2_norm_rescaling(problem::QuadraticProgrammingProblem)
   norm_of_rows = vec(l2_norm(problem.constraint_matrix, 2))
   norm_of_columns = vec(l2_norm(problem.constraint_matrix, 1))
 
+  norm_of_rows[iszero.(norm_of_rows)] .= 1.0
+  norm_of_columns[iszero.(norm_of_columns)] .= 1.0
+
   column_rescale_factor = sqrt.(norm_of_columns)
-  is_empty_column = [
-    isempty(nzrange(problem.constraint_matrix, col)) for
-    col in 1:size(problem.constraint_matrix, 2)
-  ]
-  empty_columns = findall(is_empty_column)
-  is_non_empty = .!is_empty_column
-  num_constraints, num_variables = size(problem.constraint_matrix)
-  column_rescale_factor[is_empty_column] .= 1.0
 
   problem.objective_vector ./= column_rescale_factor
   problem.variable_lower_bound .*= column_rescale_factor
@@ -374,9 +368,6 @@ function l2_norm_rescaling(problem::QuadraticProgrammingProblem)
     Diagonal(1 ./ column_rescale_factor)
 
   if length(problem.right_hand_side) != 0
-    if any(iszero, norm_of_rows)
-      error("Empty rows must be removed prior to calling this function.")
-    end
     row_rescale_factor = sqrt.(norm_of_rows)
     problem.right_hand_side ./= row_rescale_factor
     problem.constraint_matrix =
@@ -589,9 +580,9 @@ function rescale_problem(
   l_inf_ruiz_iterations::Int,
   l2_norm_rescaling::Bool,
   verbosity::Int64,
-  problem::QuadraticProgrammingProblem,
+  original_problem::QuadraticProgrammingProblem,
 )
-  original_problem = deepcopy(problem)
+  problem = deepcopy(original_problem)
   if verbosity >= 4
     println("Problem before rescaling:")
     print_problem_details(original_problem)

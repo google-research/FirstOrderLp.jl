@@ -252,15 +252,85 @@
       problem,
       FirstOrderLp.linear_programming_problem(
         [0.0, 0.0],                         # variable_lower_bound
-        [1.0 * (3)^(1/4), 2.0 * (2)^(1/4)],                         # variable_upper_bound
-        [1.0 / (3)^(1/4), 2.0 / (2)^(1/4)],                         # objective_vector
+        [1.0 * (3)^(1 / 4), 2.0 * (2)^(1 / 4)], # variable_upper_bound
+        [1.0 / (3)^(1 / 4), 2.0 / (2)^(1 / 4)], # objective_vector
         0.0,                                # objective_constant
         [
           (2*3)^(-1/4) (2*2)^(-1/4)
-          (2 * 3)^(-1/4) -(2*2)^(-1/4)
+          (2*3)^(-1/4) -(2 * 2)^(-1 / 4)
           (3)^(-1/4) 0.0
         ],                                  # constraint_matrix
-        [(2)^(-1/4), (2)^(-1/4), 2.0],    # right_hand_side
+        [(2)^(-1 / 4), (2)^(-1 / 4), 2.0],      # right_hand_side
+        1,                                  # num_equalities
+      ),
+    )
+  end
+
+  @testset "lp_norm_rescaling for LP with empty rows" begin
+    problem = FirstOrderLp.linear_programming_problem(
+      [0.0, 0.0],                   # variable_lower_bound
+      [1.0, 2.0],                   # variable_upper_bound
+      [1.0, 2.0],                   # objective_vector
+      0.0,                          # objective_constant
+      [
+        1.0 1.0
+        1.0 -1.0
+        0.0 0.0
+      ],                            # constraint_matrix
+      [1.0, 1.0, 0.0],              # right_hand_side
+      1,                            # num_equalities
+    )
+    FirstOrderLp.l2_norm_rescaling(problem)
+    # Columns are rescaled by [2^(-1/4), 2^(-1/4)]
+    # Rows are rescaled by [2^(-1/4), 2^(-1/4), 1.0]
+    test_fields_approx_equal(
+      problem,
+      FirstOrderLp.linear_programming_problem(
+        [0.0, 0.0],                         # variable_lower_bound
+        [1.0 * (2)^(1 / 4), 2.0 * (2)^(1 / 4)], # variable_upper_bound
+        [1.0 / (2)^(1 / 4), 2.0 / (2)^(1 / 4)], # objective_vector
+        0.0,                                # objective_constant
+        [
+          (2*2)^(-1/4) (2*2)^(-1/4)
+          (2*2)^(-1/4) -(2 * 2)^(-1 / 4)
+          0.0 0.0
+        ],                                  # constraint_matrix
+        [(2)^(-1 / 4), (2)^(-1 / 4), 0.0],      # right_hand_side
+        1,                                  # num_equalities
+      ),
+    )
+  end
+
+  @testset "lp_norm_rescaling for LP with empty columns" begin
+    problem = FirstOrderLp.linear_programming_problem(
+      [0.0, 0.0],                   # variable_lower_bound
+      [1.0, 2.0],                   # variable_upper_bound
+      [1.0, 2.0],                   # objective_vector
+      0.0,                          # objective_constant
+      [
+        1.0 0.0
+        1.0 0.0
+        2.0 0.0
+      ],                            # constraint_matrix
+      [1.0, 1.0, 2.0],              # right_hand_side
+      1,                            # num_equalities
+    )
+    FirstOrderLp.l2_norm_rescaling(problem)
+    # Columns are rescaled by [6^(-1/4), 1.0]
+    # Rows are rescaled by [1.0, 1.0, sqrt(2)]
+    test_fields_approx_equal(
+      problem,
+      FirstOrderLp.linear_programming_problem(
+        [0.0, 0.0],                         # variable_lower_bound
+        [1.0 * (6)^(1 / 4), 2.0], # variable_upper_bound
+        [1.0 / (6)^(1 / 4), 2.0], # objective_vector
+        0.0,                                # objective_constant
+        [
+          (6)^(-1/4) 0.0
+          (6)^(-1/4) 0.0
+          (6*4)^(-1/4)*2.0 0.0
+        ],                                  # constraint_matrix
+        [1.0, 1.0, 2.0 / sqrt(2)],      # right_hand_side
         1,                                  # num_equalities
       ),
     )
