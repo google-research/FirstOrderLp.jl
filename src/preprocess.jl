@@ -477,6 +477,68 @@ function ruiz_rescaling(
 end
 
 """
+Applies the rescaling proposed by Pock and Cambolle (2011),
+"Diagonal preconditioning for first order primal-dual algorithms
+in convex optimization"
+http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.381.6056&rep=rep1&type=pdf
+
+Although presented as a form of diagonal preconditioning, it can be
+equivalently implemented by rescaling the problem data.
+
+Each column of the constraint matrix is divided by
+sqrt(sum_{elements e in the column} |e|^(2 - alpha))
+and each row of the constraint matrix is divided by
+sqrt(sum_{elements e in the row} |e|^alpha)
+
+Lemma 2 in Pock and Chambolle demonstrates that this rescaling causes the
+operator norm of the rescaled constraint matrix to be less than or equal to
+one, which is a desireable property for PDHG.
+
+# Arguments
+- `problem::QuadraticProgrammingProblem`: the quadratic programming problem.
+  This is modified to store the transformed problem.
+- `alpha::Float64`: the exponent parameter. Must be in the interval [0, 2].
+
+# Returns
+
+A tuple of vectors `constraint_rescaling`, `variable_rescaling` such that
+the original problem is recovered by
+`unscale_problem(problem, constraint_rescaling, variable_rescaling)`.
+"""
+function pock_chambolle_rescaling(
+  problem::QuadraticProgrammingProblem,
+  alpha::Float64,
+)
+  @assert 0 <= alpha <= 2
+
+  constraint_matrix = problem.constraint_matrix
+
+  variable_rescaling = vec(
+    sqrt.(
+      mapreduce(
+        t -> abs(t)^(2 - alpha),
+        +,
+        constraint_matrix,
+        dims = 1,
+        init = 0.0,
+      ),
+    ),
+  )
+  constraint_rescaling = vec(
+    sqrt.(
+      mapreduce(t -> abs(t)^alpha, +, constraint_matrix, dims = 2, init = 0.0),
+    ),
+  )
+
+  variable_rescaling[iszero.(variable_rescaling)] .= 1.0
+  constraint_rescaling[iszero.(constraint_rescaling)] .= 1.0
+
+  scale_problem(problem, constraint_rescaling, variable_rescaling)
+
+  return constraint_rescaling, variable_rescaling
+end
+
+"""
 Rescales `problem` in place. If we let `D = diag(cum_variable_rescaling)` and
 `E = diag(cum_constraint_rescaling)`, then `problem` is modified such that:
 
@@ -571,6 +633,7 @@ modified.
 function rescale_problem(
   l_inf_ruiz_iterations::Int,
   l2_norm_rescaling::Bool,
+  pock_chambolle_alpha::Union{Float64,Nothing},
   verbosity::Int64,
   original_problem::QuadraticProgrammingProblem,
 )
@@ -593,6 +656,13 @@ function rescale_problem(
 
   if l2_norm_rescaling
     con_rescale, var_rescale = FirstOrderLp.l2_norm_rescaling(problem)
+    constraint_rescaling .*= con_rescale
+    variable_rescaling .*= var_rescale
+  end
+
+  if !isnothing(pock_chambolle_alpha)
+    con_rescale, var_rescale =
+      FirstOrderLp.pock_chambolle_rescaling(problem, pock_chambolle_alpha)
     constraint_rescaling .*= con_rescale
     variable_rescaling .*= var_rescale
   end

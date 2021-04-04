@@ -97,6 +97,12 @@ struct PdhgParameters
   l2_norm_rescaling::Bool
 
   """
+  If not `nothing`, runs Pock-Chambolle rescaling with the given alpha exponent
+  parameter.
+  """
+  pock_chambolle_alpha::Union{Float64,Nothing}
+
+  """
   Used to bias the computation of the primal/dual balancing parameter
   primal_weight. Must be positive. A value of 1 balances primal and dual
   equally.
@@ -362,6 +368,7 @@ function optimize(
   scaled_problem = rescale_problem(
     params.l_inf_ruiz_iterations,
     params.l2_norm_rescaling,
+    params.pock_chambolle_alpha,
     params.verbosity,
     original_problem,
   )

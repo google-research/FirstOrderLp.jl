@@ -15,6 +15,7 @@
 function generate_mirror_prox_params(;
   l_inf_ruiz_iterations = 0,
   l2_norm_rescaling = false,
+  pock_chambolle_alpha = nothing,
   primal_importance,
   diagonal_scaling,
   verbosity,
@@ -43,6 +44,7 @@ function generate_mirror_prox_params(;
   parameters = FirstOrderLp.MirrorProxParameters(
     l_inf_ruiz_iterations,
     l2_norm_rescaling,
+    pock_chambolle_alpha,
     primal_importance,
     diagonal_scaling,
     verbosity,
@@ -162,6 +164,21 @@ end
       output = FirstOrderLp.optimize(parameters, problem)
       @test output.primal_solution ≈ [0.25; 0.0] atol = 1.0e-4
       @test output.dual_solution ≈ [0.0] atol = 1.0e-4
+    end
+    @testset "Pock-Chambolle rescaling" begin
+      parameters = generate_mirror_prox_params(
+        pock_chambolle_alpha = 1.0,
+        primal_importance = 1.0,
+        diagonal_scaling = "off",
+        verbosity = 0,
+        iteration_limit = 400,
+        restart_scheme = FirstOrderLp.NO_RESTARTS,
+        restart_frequency_if_fixed = 1000,
+      )
+      problem = example_lp()
+      output = FirstOrderLp.optimize(parameters, problem)
+      @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-4
+      @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-4
     end
   end
   @testset "diagonal_scaling=l2" begin
