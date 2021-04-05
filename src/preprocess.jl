@@ -341,12 +341,17 @@ end
 """
 Rescales a quadratic programming problem by dividing each row and column of the
 constraint matrix by the sqrt its respective L2 norm, adjusting the other
-problem data accordingly. Returns the scaling vectors in the same format as
-`ruiz_rescaling`.
+problem data accordingly.
 
 # Arguments
 - `problem::QuadraticProgrammingProblem`: The input quadratic programming
   problem. This is modified to store the transformed problem.
+
+# Returns
+
+A tuple of vectors `constraint_rescaling`, `variable_rescaling` such that
+the original problem is recovered by
+`unscale_problem(problem, constraint_rescaling, variable_rescaling)`.
 """
 function l2_norm_rescaling(problem::QuadraticProgrammingProblem)
   num_constraints, num_variables = size(problem.constraint_matrix)
@@ -358,23 +363,8 @@ function l2_norm_rescaling(problem::QuadraticProgrammingProblem)
   norm_of_columns[iszero.(norm_of_columns)] .= 1.0
 
   column_rescale_factor = sqrt.(norm_of_columns)
-
-  problem.objective_vector ./= column_rescale_factor
-  problem.variable_lower_bound .*= column_rescale_factor
-  problem.variable_upper_bound .*= column_rescale_factor
-  problem.objective_matrix =
-    Diagonal(1 ./ column_rescale_factor) *
-    problem.objective_matrix *
-    Diagonal(1 ./ column_rescale_factor)
-
-  if length(problem.right_hand_side) != 0
-    row_rescale_factor = sqrt.(norm_of_rows)
-    problem.right_hand_side ./= row_rescale_factor
-    problem.constraint_matrix =
-      Diagonal(1 ./ row_rescale_factor) *
-      problem.constraint_matrix *
-      Diagonal(1 ./ column_rescale_factor)
-  end
+  row_rescale_factor = sqrt.(norm_of_rows)
+  scale_problem(problem, row_rescale_factor, column_rescale_factor)
 
   return row_rescale_factor, column_rescale_factor
 end
@@ -384,17 +374,6 @@ Uses a modified Ruiz rescaling algorithm to rescale the matrix M=[Q,A';A,0]
 where Q is objective_matrix and A is constraint_matrix, and returns the
 cumulative scaling vectors. More details of Ruiz rescaling algorithm can be
 found at: http://www.numerical.rl.ac.uk/reports/drRAL2001034.pdf.
-
-Ruiz rescaling finds two diagonal matrices D (i.e. diag(cum_variable_rescaling))
-and E (i.e. diag(cum_constraint_rescaling)), and effectively rescales the QP by
-    variable = D variable
-    objective_matrix = D^-1 objective_matrix D^-1
-    objective_vector = D^-1 objective_vector
-    objective_constant = objective_constant
-    variable_lower_bound = D variable_lower_bound
-    variable_upper_bound = D variable_upper_bound
-    constraint_matrix = E^-1 constraint_matrix D^-1
-    right_hand_side = E^-1 right_hand_side
 
 In the p=Inf case, both matrices approach having all row and column LInf norms
 of M equal to 1 as the number of iterations goes to infinity. This convergence
@@ -421,6 +400,12 @@ TODO: figure out when this converges.
 - `num_iterations::Int64` the number of iterations to run Ruiz rescaling
   algorithm. Must be positive.
 - `p::Float64`: which norm to use. Must be 2 or Inf.
+
+# Returns
+
+A tuple of vectors `constraint_rescaling`, `variable_rescaling` such that
+the original problem is recovered by
+`unscale_problem(problem, constraint_rescaling, variable_rescaling)`.
 """
 function ruiz_rescaling(
   problem::QuadraticProgrammingProblem,
@@ -457,15 +442,9 @@ function ruiz_rescaling(
     end
     variable_rescaling[iszero.(variable_rescaling)] .= 1.0
 
-    problem.objective_vector ./= variable_rescaling
-    problem.variable_upper_bound .*= variable_rescaling
-    problem.variable_lower_bound .*= variable_rescaling
-    problem.objective_matrix =
-      Diagonal(1 ./ variable_rescaling) *
-      problem.objective_matrix *
-      Diagonal(1 ./ variable_rescaling)
-
-    if length(problem.right_hand_side) != 0
+    if num_constraints == 0
+      constraint_rescaling = Float64[]
+    else
       if p == Inf
         constraint_rescaling =
           vec(sqrt.(maximum(abs.(constraint_matrix), dims = 2)))
@@ -485,12 +464,8 @@ function ruiz_rescaling(
         constraint_rescaling = vec(sqrt.(norm_of_rows / target_row_norm))
       end
       constraint_rescaling[iszero.(constraint_rescaling)] .= 1.0
-      problem.right_hand_side ./= constraint_rescaling
-      problem.constraint_matrix =
-        Diagonal(1 ./ constraint_rescaling) *
-        constraint_matrix *
-        Diagonal(1 ./ variable_rescaling)
     end
+    scale_problem(problem, constraint_rescaling, variable_rescaling)
 
     cum_constraint_rescaling .*= constraint_rescaling
     cum_variable_rescaling .*= variable_rescaling
@@ -500,26 +475,52 @@ function ruiz_rescaling(
 end
 
 """
+Rescales `problem` in place. If we let `D = diag(cum_variable_rescaling)` and
+`E = diag(cum_constraint_rescaling)`, then `problem` is modified such that:
+
+    objective_matrix = D^-1 objective_matrix D^-1
+    objective_vector = D^-1 objective_vector
+    objective_constant = objective_constant
+    variable_lower_bound = D variable_lower_bound
+    variable_upper_bound = D variable_upper_bound
+    constraint_matrix = E^-1 constraint_matrix D^-1
+    right_hand_side = E^-1 right_hand_side
+
+The scaling vectors must be positive.
+"""
+function scale_problem(
+  problem::QuadraticProgrammingProblem,
+  constraint_rescaling::Vector{Float64},
+  variable_rescaling::Vector{Float64},
+)
+  @assert all(t -> t > 0, constraint_rescaling)
+  @assert all(t -> t > 0, variable_rescaling)
+  problem.objective_vector ./= variable_rescaling
+  problem.objective_matrix =
+    Diagonal(1 ./ variable_rescaling) *
+    problem.objective_matrix *
+    Diagonal(1 ./ variable_rescaling)
+  problem.variable_upper_bound .*= variable_rescaling
+  problem.variable_lower_bound .*= variable_rescaling
+  problem.right_hand_side ./= constraint_rescaling
+  problem.constraint_matrix =
+    Diagonal(1 ./ constraint_rescaling) *
+    problem.constraint_matrix *
+    Diagonal(1 ./ variable_rescaling)
+  return
+end
+
+"""
 Recovers the original problem from the scaled problem and the scaling vectors
-in place. This function should be only used for testing.
+in place. The inverse of `scale_problem`. This function should be only used for
+testing.
 """
 function unscale_problem(
   problem::QuadraticProgrammingProblem,
   constraint_rescaling::Vector{Float64},
   variable_rescaling::Vector{Float64},
 )
-  problem.objective_vector .*= variable_rescaling
-  problem.objective_matrix =
-    Diagonal(variable_rescaling) *
-    problem.objective_matrix *
-    Diagonal(variable_rescaling)
-  problem.variable_upper_bound ./= variable_rescaling
-  problem.variable_lower_bound ./= variable_rescaling
-  problem.right_hand_side .*= constraint_rescaling
-  problem.constraint_matrix =
-    Diagonal(constraint_rescaling) *
-    problem.constraint_matrix *
-    Diagonal(variable_rescaling)
+  scale_problem(problem, 1 ./ constraint_rescaling, 1 ./ variable_rescaling)
   return
 end
 
