@@ -97,16 +97,18 @@ to avoid overflow.
 An array with the l2 norm of a matrix over the given dimension.
 """
 function l2_norm(matrix::SparseMatrixCSC{Float64,Int64}, dimension::Int64)
-  scale_factor = vec(maximum(abs.(matrix), dims = dimension))
+  scale_factor = vec(maximum(abs, matrix, dims = dimension))
   scale_factor[iszero.(scale_factor)] .= 1.0
   if dimension == 1
     scaled_matrix = matrix * Diagonal(1 ./ scale_factor)
-    return scale_factor .* vec(sqrt.(sum(scaled_matrix .^ 2, dims = dimension)))
+    return scale_factor .*
+           vec(sqrt.(sum(t -> t^2, scaled_matrix, dims = dimension)))
   end
 
   if dimension == 2
     scaled_matrix = Diagonal(1 ./ scale_factor) * matrix
-    return scale_factor .* vec(sqrt.(sum(scaled_matrix .^ 2, dims = dimension)))
+    return scale_factor .*
+           vec(sqrt.(sum(t -> t^2, scaled_matrix, dims = dimension)))
   end
 end
 
@@ -424,8 +426,8 @@ function ruiz_rescaling(
       variable_rescaling = vec(
         sqrt.(
           max.(
-            maximum(abs.(constraint_matrix), dims = 1),
-            maximum(abs.(objective_matrix), dims = 1),
+            maximum(abs, constraint_matrix, dims = 1),
+            maximum(abs, objective_matrix, dims = 1),
           ),
         ),
       )
@@ -447,7 +449,7 @@ function ruiz_rescaling(
     else
       if p == Inf
         constraint_rescaling =
-          vec(sqrt.(maximum(abs.(constraint_matrix), dims = 2)))
+          vec(sqrt.(maximum(abs, constraint_matrix, dims = 2)))
       else
         @assert p == 2
         norm_of_rows = vec(l2_norm(problem.constraint_matrix, 2))
