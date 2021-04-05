@@ -486,15 +486,15 @@ Rescales `problem` in place. If we let `D = diag(cum_variable_rescaling)` and
     constraint_matrix = E^-1 constraint_matrix D^-1
     right_hand_side = E^-1 right_hand_side
 
-The scaling vectors should not contain zero.
+The scaling vectors must be positive.
 """
 function scale_problem(
   problem::QuadraticProgrammingProblem,
   constraint_rescaling::Vector{Float64},
   variable_rescaling::Vector{Float64},
 )
-  @assert all(!iszero, constraint_rescaling)
-  @assert all(!iszero, variable_rescaling)
+  @assert all(t -> t > 0, constraint_rescaling)
+  @assert all(t -> t > 0, variable_rescaling)
   problem.objective_vector ./= variable_rescaling
   problem.objective_matrix =
     Diagonal(1 ./ variable_rescaling) *
