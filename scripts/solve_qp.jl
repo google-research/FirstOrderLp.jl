@@ -204,9 +204,10 @@ function parse_command_line()
 
     "--pock_chambolle_alpha"
     help =
-      "If specified, enables Pock-Chambolle rescaling using the exponent " *
-      "parameter alpha. Alpha must be in the interval [0, 2]. If not " *
-      "specified, this rescaling step is skipped."
+      "If specified, applies Pock-Chambolle rescaling using the exponent " *
+      "parameter alpha after the (optional) L2 norm rescaling. Alpha must " *
+      "be in the interval [0, 2]. If not specified, this rescaling step is " *
+      "skipped."
     arg_type = Float64
 
     "--primal_importance"
