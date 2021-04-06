@@ -336,6 +336,66 @@
     )
   end
 
+  @testset "Pock-Chambolle rescaling for LP, alpha = 0" begin
+    problem = FirstOrderLp.linear_programming_problem(
+      [-1.0, -1.0],                 # variable_lower_bound
+      [1.0, 2.0],                   # variable_upper_bound
+      [1.0, 2.0],                   # objective_vector
+      0.0,                          # objective_constant
+      [
+        1.0 1.0
+        2.0 -1.0
+        1.0 0.0
+      ],                            # constraint_matrix
+      [1.0, 1.0, 2.0],              # right_hand_side
+      1,                            # num_equalities
+    )
+    constraint_rescaling, variable_rescaling =
+      FirstOrderLp.pock_chambolle_rescaling(problem, 0.0)
+    @test constraint_rescaling ≈ [sqrt(2), sqrt(2), sqrt(2)]
+    @test variable_rescaling ≈ [sqrt(6), sqrt(2)]
+  end
+
+  @testset "Pock-Chambolle rescaling for LP, alpha = 1" begin
+    problem = FirstOrderLp.linear_programming_problem(
+      [-1.0, -1.0],                 # variable_lower_bound
+      [1.0, 2.0],                   # variable_upper_bound
+      [1.0, 2.0],                   # objective_vector
+      0.0,                          # objective_constant
+      [
+        1.0 1.0
+        2.0 -1.0
+        1.0 0.0
+      ],                            # constraint_matrix
+      [1.0, 1.0, 2.0],              # right_hand_side
+      1,                            # num_equalities
+    )
+    constraint_rescaling, variable_rescaling =
+      FirstOrderLp.pock_chambolle_rescaling(problem, 1.0)
+    @test constraint_rescaling ≈ [sqrt(2), sqrt(3), sqrt(1)]
+    @test variable_rescaling ≈ [sqrt(4), sqrt(2)]
+  end
+
+  @testset "Pock-Chambolle rescaling for LP, alpha = 2" begin
+    problem = FirstOrderLp.linear_programming_problem(
+      [-1.0, -1.0],                 # variable_lower_bound
+      [1.0, 2.0],                   # variable_upper_bound
+      [1.0, 2.0],                   # objective_vector
+      0.0,                          # objective_constant
+      [
+        1.0 1.0
+        2.0 -1.0
+        1.0 0.0
+      ],                            # constraint_matrix
+      [1.0, 1.0, 2.0],              # right_hand_side
+      1,                            # num_equalities
+    )
+    constraint_rescaling, variable_rescaling =
+      FirstOrderLp.pock_chambolle_rescaling(problem, 2.0)
+    @test constraint_rescaling ≈ [sqrt(2), sqrt(5), sqrt(1)]
+    @test variable_rescaling ≈ [sqrt(3), sqrt(3)]
+  end
+
   @testset "Ruiz-Rescaling for LP" begin
     problem = FirstOrderLp.linear_programming_problem(
       [0.0, 0.0],                   # variable_lower_bound
@@ -469,6 +529,7 @@
     scaled_problem = FirstOrderLp.rescale_problem(
       10, # l_inf_ruiz_iterations
       true, # l2_norm_rescaling
+      nothing, # pock_chambolle_alpha
       0, # verbosity
       problem,
     )

@@ -202,6 +202,14 @@ function parse_command_line()
     arg_type = Bool
     default = true
 
+    "--pock_chambolle_alpha"
+    help =
+      "If specified, applies Pock-Chambolle rescaling using the exponent " *
+      "parameter alpha after the (optional) L2 norm rescaling. Alpha must " *
+      "be in the interval [0, 2]. If not specified, this rescaling step is " *
+      "skipped."
+    arg_type = Float64
+
     "--primal_importance"
     help =
       "Must be positive. The default of 1 balances primal and dual " *
@@ -456,6 +464,8 @@ function main()
       parsed_args["use_approximate_localized_duality_gap"],
     )
 
+    pock_chambolle_alpha = get(parsed_args, "pock_chambolle_alpha", nothing)
+
     termination_criteria = FirstOrderLp.construct_termination_criteria()
     if parsed_args["optimality_norm"] == "l2"
       termination_criteria.optimality_norm = FirstOrderLp.OptimalityNorm.L2
@@ -482,6 +492,7 @@ function main()
       parameters = FirstOrderLp.MirrorProxParameters(
         parsed_args["l_inf_ruiz_iterations"],
         parsed_args["l2_norm_rescaling"],
+        pock_chambolle_alpha,
         parsed_args["primal_importance"],
         parsed_args["diagonal_scaling"],
         parsed_args["verbosity"],
@@ -494,6 +505,7 @@ function main()
       parameters = FirstOrderLp.PdhgParameters(
         parsed_args["l_inf_ruiz_iterations"],
         parsed_args["l2_norm_rescaling"],
+        pock_chambolle_alpha,
         parsed_args["primal_importance"],
         parsed_args["diagonal_scaling"],
         parsed_args["adaptive_step_size"],

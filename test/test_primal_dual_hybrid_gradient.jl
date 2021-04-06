@@ -15,6 +15,7 @@
 function generate_primal_dual_hybrid_gradient_params(;
   l_inf_ruiz_iterations = 0,
   l2_norm_rescaling = false,
+  pock_chambolle_alpha = nothing,
   iteration_limit = 200,
   primal_importance = 1.0,
   diagonal_scaling = "off",
@@ -45,6 +46,7 @@ function generate_primal_dual_hybrid_gradient_params(;
   parameters = FirstOrderLp.PdhgParameters(
     l_inf_ruiz_iterations,
     l2_norm_rescaling,
+    pock_chambolle_alpha,
     primal_importance,
     diagonal_scaling,
     adaptive_step_size,
@@ -286,6 +288,18 @@ end
       output = FirstOrderLp.optimize(parameters, problem)
       @test output.primal_solution ≈ [0.25; 0.0] atol = 1.0e-4
       @test output.dual_solution ≈ [0.0] atol = 1.0e-4
+    end
+    @testset "Pock-Chambolle rescaling" begin
+      parameters = generate_primal_dual_hybrid_gradient_params(
+        pock_chambolle_alpha = 1.0,
+        iteration_limit = 200,
+        primal_importance = 1.0,
+        verbosity = 0,
+      )
+      problem = example_lp()
+      output = FirstOrderLp.optimize(parameters, problem)
+      @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-4
+      @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-4
     end
   end
   @testset "diagonal_scaling=l2" begin
