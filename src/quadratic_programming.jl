@@ -172,9 +172,9 @@ function print_problem_details(qp::QuadraticProgrammingProblem)
   print("  Absolute value of nonzero constraint matrix elements: ")
   Printf.@printf(
     "largest=%f, smallest=%f, avg=%f\n",
-    maximum(abs.(nonzeros(qp.constraint_matrix))),
-    minimum(abs.(nonzeros(qp.constraint_matrix))),
-    sum(abs.(nonzeros(qp.constraint_matrix))) /
+    maximum(abs, nonzeros(qp.constraint_matrix)),
+    minimum(abs, nonzeros(qp.constraint_matrix)),
+    sum(abs, nonzeros(qp.constraint_matrix)) /
     length(nonzeros(qp.constraint_matrix))
   )
 
@@ -194,26 +194,27 @@ function print_problem_details(qp::QuadraticProgrammingProblem)
     print("  Absolute value of objective matrix elements: ")
     Printf.@printf(
       "largest=%f, smallest=%f, avg=%f\n",
-      maximum(abs.(qp.objective_matrix)),
-      minimum(abs.(qp.objective_matrix)),
-      sum(abs.(qp.objective_matrix)) / length(nonzeros(qp.constraint_matrix))
+      maximum(abs, nonzeros(qp.objective_matrix)),
+      minimum(abs, nonzeros(qp.objective_matrix)),
+      sum(abs, nonzeros(qp.objective_matrix)) /
+      length(nonzeros(qp.constraint_matrix))
     )
   end
 
   print("  Absolute value of objective vector elements: ")
   Printf.@printf(
     "largest=%f, smallest=%f, avg=%f\n",
-    maximum(abs.(qp.objective_vector)),
-    minimum(abs.(qp.objective_vector)),
-    sum(abs.(qp.objective_vector)) / length(qp.objective_vector)
+    maximum(abs, qp.objective_vector),
+    minimum(abs, qp.objective_vector),
+    sum(abs, qp.objective_vector) / length(qp.objective_vector)
   )
 
   print("  Absolute value of rhs vector elements: ")
   Printf.@printf(
     "largest=%f, smallest=%f, avg=%f\n",
-    maximum(abs.(qp.right_hand_side)),
-    minimum(abs.(qp.right_hand_side)),
-    sum(abs.(qp.right_hand_side)) / length(qp.right_hand_side)
+    maximum(abs, qp.right_hand_side),
+    minimum(abs, qp.right_hand_side),
+    sum(abs, qp.right_hand_side) / length(qp.right_hand_side)
   )
 
   bound_gaps = qp.variable_upper_bound - qp.variable_lower_bound

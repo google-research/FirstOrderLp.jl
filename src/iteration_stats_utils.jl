@@ -380,20 +380,24 @@ function compute_iteration_stats(
   stats.cumulative_kkt_matrix_passes = cumulative_kkt_matrix_passes
   stats.cumulative_time_sec = cumulative_time_sec
 
-  stats.convergence_information = [compute_convergence_information(
-    problem,
-    qp_cache,
-    primal_iterate,
-    dual_iterate,
-    eps_optimal_absolute / eps_optimal_relative,
-    candidate_type,
-  )]
-  stats.infeasibility_information = [compute_infeasibility_information(
-    problem,
-    primal_ray_estimate,
-    dual_ray_estimate,
-    candidate_type,
-  )]
+  stats.convergence_information = [
+    compute_convergence_information(
+      problem,
+      qp_cache,
+      primal_iterate,
+      dual_iterate,
+      eps_optimal_absolute / eps_optimal_relative,
+      candidate_type,
+    ),
+  ]
+  stats.infeasibility_information = [
+    compute_infeasibility_information(
+      problem,
+      primal_ray_estimate,
+      dual_ray_estimate,
+      candidate_type,
+    ),
+  ]
   stats.step_size = step_size
   stats.primal_weight = primal_weight
   stats.method_specific_stats = Dict{AbstractString,Float64}()
@@ -593,7 +597,9 @@ function display_iteration_stats(
       Printf.@printf(
         " %.1e  %s  %.1e  | %.1e  %s  |",
         stats.infeasibility_information[1].max_primal_ray_infeasibility,
-        lpad_float(stats.infeasibility_information[1].primal_ray_linear_objective),
+        lpad_float(
+          stats.infeasibility_information[1].primal_ray_linear_objective,
+        ),
         stats.infeasibility_information[1].primal_ray_quadratic_norm,
         stats.infeasibility_information[1].max_dual_ray_infeasibility,
         lpad_float(stats.infeasibility_information[1].dual_ray_objective)

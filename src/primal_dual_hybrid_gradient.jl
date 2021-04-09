@@ -79,10 +79,21 @@ Saddle Point Problems" by Bingsheng He, Feng Ma, Xiaoming Yuan
 
 struct PdhgParameters
   """
-  One of the supported steps: {rescale-columns, ruiz, l2-ruiz, none}.
-  "none" means no preprocessing.
+  Number of L_infinity Ruiz rescaling iterations to apply to the constraint
+  matrix. Zero disables this rescaling pass.
   """
-  rescaling::String
+  l_inf_ruiz_iterations::Int
+
+  """
+  If true, applies L2 norm rescaling after the Ruiz rescaling.
+  """
+  l2_norm_rescaling::Bool
+
+  """
+  If not `nothing`, runs Pock-Chambolle rescaling with the given alpha exponent
+  parameter.
+  """
+  pock_chambolle_alpha::Union{Float64,Nothing}
 
   """
   Used to bias the computation of the primal/dual balancing parameter
@@ -701,8 +712,13 @@ function optimize(
 )
   validate(original_problem)
   qp_cache = cached_quadratic_program_info(original_problem)
-  scaled_problem =
-    rescale_problem(params.rescaling, params.verbosity, original_problem)
+  scaled_problem = rescale_problem(
+    params.l_inf_ruiz_iterations,
+    params.l2_norm_rescaling,
+    params.pock_chambolle_alpha,
+    params.verbosity,
+    original_problem,
+  )
   problem = scaled_problem.scaled_qp
 
   primal_size = length(problem.variable_lower_bound)
