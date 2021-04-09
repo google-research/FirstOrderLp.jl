@@ -182,7 +182,21 @@ mutable struct PdhgSolverState
   """
   Total number of iterations. This includes inner iterations.
   """
-  total_number_iterations::Int32
+  total_number_iterations::Int64
+
+  """
+  Latest required_ratio. The proof of Theorem 1 requires 1 >= required_ratio.
+  """
+  required_ratio::Float64
+
+  """
+  Primal rescaling parameters.
+  """
+  primal_norm_params::Vector{Float64}
+  """
+  Dual rescaling parameters.
+  """
+  dual_norm_params::Vector{Float64}
 end
 
 """
@@ -452,6 +466,8 @@ function update_solver_state!(
   next_dual::Vector{Float64},
   next_dual_product::Vector{Float64},
   step_size::Float64,
+  primal_norm_params::Vector{Float64},
+  dual_norm_params::Vector{Float64},
 )
 
   solver_state.delta_primal = next_primal - solver_state.current_primal_solution
@@ -459,7 +475,9 @@ function update_solver_state!(
   solver_state.current_primal_solution = next_primal
   solver_state.current_dual_solution = next_dual
   solver_state.step_size = step_size
-  current_dual_product = next_dual_product
+  solver_state.current_dual_product = next_dual_product
+  solver_state.primal_norm_params = primal_norm_params
+  solver_state.dual_norm_params = dual_norm_params
 
   weight = solver_state.step_size
   add_to_solution_weighted_average(
@@ -468,6 +486,39 @@ function update_solver_state!(
     solver_state.current_dual_solution,
     weight,
   )
+end
+
+"""
+Computes the interaction and movement of the new iterates.
+The movement is used to check if there is a numerical error (movement == 0.0)
+and based on the theory (Theorem 1) the algorithm only moves if interaction / movement < 1
+"""
+function compute_interaction_and_movement(
+  solver_state::PdhgSolverState,
+  problem::QuadraticProgrammingProblem,
+  matrix_information::MatrixInformation,
+  next_primal::Vector{Float64},
+  next_dual::Vector{Float64},
+  next_dual_product::Vector{Float64},
+  primal_norm_params::Vector{Float64},
+  dual_norm_params::Vector{Float64},
+)
+  delta_primal = next_primal .- solver_state.current_primal_solution
+  delta_dual = next_dual .- solver_state.current_dual_solution
+  primal_objective_interaction =
+    0.5 * (delta_primal' * problem.objective_matrix * delta_primal) -
+    0.5 *
+    weighted_norm(delta_primal, matrix_information.diagonal_objective_matrix)^2
+  primal_dual_interaction =
+    delta_primal' * (next_dual_product .- solver_state.current_dual_product)
+  interaction = abs(primal_dual_interaction) + abs(primal_objective_interaction)
+  movement =
+    0.5 *
+    weighted_norm(
+      delta_primal,
+      primal_norm_params - matrix_information.diagonal_objective_matrix,
+    )^2 + 0.5 * weighted_norm(delta_dual, dual_norm_params)^2
+  return interaction, movement
 end
 
 """
@@ -494,10 +545,6 @@ function take_adaptive_step!(
       step_size,
       solver_state.primal_weight,
     )
-    if iter < 60 && solver_state.total_number_iterations <= 65
-      print(primal_norm_params)
-      print("\n")
-    end
 
     next_primal = compute_next_primal_solution(
       problem,
@@ -513,45 +560,35 @@ function take_adaptive_step!(
       solver_state.current_dual_solution,
       dual_norm_params,
     )
-    delta_primal = next_primal .- solver_state.current_primal_solution
-    delta_dual = next_dual .- solver_state.current_dual_solution
-
-
-    primal_objective_interaction =
-      0.5 * (delta_primal' * problem.objective_matrix * delta_primal) -
-      0.5 *
-      weighted_norm(
-        delta_primal,
-        matrix_information.diagonal_objective_matrix,
-      )^2
-    primal_dual_interaction =
-      delta_primal' * (next_dual_product .- solver_state.current_dual_product)
-    interaction =
-      abs(primal_dual_interaction) + abs(primal_objective_interaction)
-
+    interaction, movement = compute_interaction_and_movement(
+      solver_state,
+      problem,
+      matrix_information,
+      next_primal,
+      next_dual,
+      next_dual_product,
+      primal_norm_params,
+      dual_norm_params,
+    )
     solver_state.cumulative_kkt_passes += KKT_PASSES_PER_ITERATION
 
-    movement =
-      0.5 *
-      weighted_norm(
-        delta_primal,
-        primal_norm_params - matrix_information.diagonal_objective_matrix,
-      )^2 + 0.5 * weighted_norm(delta_dual, dual_norm_params)^2
     if movement == 0.0
       # The algorithm will terminate at the beginning of the next iteration
       solver_state.numerical_error = true
       break
     end
     # The proof of Theorem 1 requires movement >= interaction.
-    required_ratio = interaction / movement
+    solver_state.required_ratio = interaction / movement
 
-    if required_ratio <= 1
+    if solver_state.required_ratio <= 1
       update_solver_state!(
         solver_state,
         next_primal,
         next_dual,
         next_dual_product,
         step_size,
+        primal_norm_params,
+        dual_norm_params,
       )
       done = true
     end
@@ -563,7 +600,7 @@ function take_adaptive_step!(
     # smaller than they could be as a margin to reduce rejected steps.
     first_term =
       (1 - (solver_state.total_number_iterations + 1)^(-exponent_one)) /
-      required_ratio * step_size
+      solver_state.required_ratio * step_size
     second_term =
       (1 + (solver_state.total_number_iterations + 1)^(-exponent_two)) *
       step_size
@@ -578,9 +615,6 @@ function take_adaptive_step!(
     # value we stop having rejected steps.
     step_size = min(first_term, second_term)
   end
-  print(iter)
-  print("\n")
-  # TODO: Decide if we want to update here.
   solver_state.step_size = step_size
 end
 
@@ -616,15 +650,36 @@ function take_constant_step_size_step!(
   )
 
   solver_state.cumulative_kkt_passes += KKT_PASSES_PER_ITERATION
-  update_solver_state!(
+  interaction, movement = compute_interaction_and_movement(
     solver_state,
+    problem,
+    matrix_information,
     next_primal,
     next_dual,
     next_dual_product,
-    step_size,
+    primal_norm_params,
+    dual_norm_params,
   )
+  if movement == 0.0
+    # The algorithm will terminate at the beginning of the next iteration
+    solver_state.numerical_error = true
+    return
+  end
+  # The proof of Theorem 1 requires movement >= interaction.
+  solver_state.required_ratio = interaction / movement
 
-  # TODO: Decide if we want to check for movement == 0.0 here.
+  if solver_state.required_ratio <= 1
+    update_solver_state!(
+      solver_state,
+      next_primal,
+      next_dual,
+      next_dual_product,
+      solver_state.step_size,
+      primal_norm_params,
+      dual_norm_params,
+    )
+    done = true
+  end
 end
 
 """
@@ -670,6 +725,9 @@ function optimize(
     false,               # numerical_error
     0.0,                 # cumulative_kkt_passes
     0,                   # total_number_iterations
+    1.0,               # required_ratio
+    zeros(primal_size),  #primal_norm_params
+    zeros(primal_size),  #dual_norm_params
   )
 
   if params.adaptive_step_size
@@ -689,7 +747,6 @@ function optimize(
   end
 
 
-  iterations_completed = 0
 
   # Idealized number of KKT passes each time the termination criteria and
   # restart scheme is run. One of these comes from evaluating the gradient at
@@ -750,7 +807,7 @@ function optimize(
   primal_weight_update_smoothing =
     params.restart_params.primal_weight_update_smoothing
 
-  primal_norm_params, dual_norm_params = define_norms(
+  solver_state.primal_norm_params, solver_state.dual_norm_params = define_norms(
     params.diagonal_scaling,
     matrix_information,
     solver_state.step_size,
@@ -830,8 +887,8 @@ function optimize(
         problem,
         avg_primal_solution,
         avg_dual_solution,
-        primal_norm_params,
-        dual_norm_params,
+        solver_state.primal_norm_params,
+        solver_state.dual_norm_params,
       )
       if params.record_iteration_stats
         push!(iteration_stats, current_iteration_stats)
@@ -877,7 +934,7 @@ function optimize(
           avg_primal_solution,
           avg_dual_solution,
           termination_reason,
-          iterations_completed,
+          iteration - 1,
           iteration_stats,
         )
       end
@@ -888,9 +945,9 @@ function optimize(
         solver_state.current_primal_solution,
         solver_state.current_dual_solution,
         last_restart_info,
-        iterations_completed,
-        primal_norm_params,
-        dual_norm_params,
+        iteration - 1,
+        solver_state.primal_norm_params,
+        solver_state.dual_norm_params,
         solver_state.primal_weight,
         params.verbosity,
         params.restart_params,
@@ -907,7 +964,7 @@ function optimize(
       if current_iteration_stats.restart_used ==
          RESTART_CHOICE_RESTART_TO_AVERAGE
         solver_state.current_dual_product =
-          problem.constraint_matrix' * current_dual_solution
+          problem.constraint_matrix' * solver_state.current_dual_solution
       end
     end
 
@@ -927,7 +984,7 @@ function optimize(
         original_primal_norm_params,
         original_dual_norm_params,
         solver_state.step_size,
-        required_ratio,
+        solver_state.required_ratio,
         solver_state.primal_weight,
       )
     end
@@ -942,8 +999,6 @@ function optimize(
         matrix_information,
       )
     end
-
-    iterations_completed += 1
 
     time_spent_doing_basic_algorithm +=
       time() - time_spent_doing_basic_algorithm_checkpoint
