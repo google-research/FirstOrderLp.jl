@@ -139,8 +139,8 @@ struct PdhgParameters
 end
 
 """
-A PdhgSolverState struct specifies the state of the solver.
-It is used to pass information among the main solver function and other helper functions.
+A PdhgSolverState struct specifies the state of the solver.  It is used to
+pass information among the main solver function and other helper functions.
 """
 mutable struct PdhgSolverState
   current_primal_solution::Vector{Float64}
@@ -148,18 +148,18 @@ mutable struct PdhgSolverState
   current_dual_solution::Vector{Float64}
 
   """
-Current primal delta. That is current_primal_solution - previous_primal_solution.
-"""
+  Current primal delta. That is current_primal_solution - previous_primal_solution.
+  """
   delta_primal::Vector{Float64}
 
   """
-Current dual delta. That is current_dual_solution - previous_dual_solution.
-"""
+  Current dual delta. That is current_dual_solution - previous_dual_solution.
+  """
   delta_dual::Vector{Float64}
 
   """
-A cache of constraint_matrix' * current_dual_solution.
-"""
+  A cache of constraint_matrix' * current_dual_solution.
+  """
   current_dual_product::Vector{Float64}
 
   solution_weighted_avg::SolutionWeightedAverage
@@ -169,33 +169,36 @@ A cache of constraint_matrix' * current_dual_solution.
   primal_weight::Float64
 
   """
-True only if the solver was unable to take a step in the previous iterations because of numerical issues, and must terminate on the next step.
-"""
+  True only if the solver was unable to take a step in the previous
+  iterations because of numerical issues, and must terminate on the next step.
+  """
+
   numerical_error::Bool
 
   """
-Number of KKT passes so far.
-"""
+  Number of KKT passes so far.
+  """
   cumulative_kkt_passes::Float64
 
   """
-Total number of iterations. This includes inner iterations.
-"""
+  Total number of iterations. This includes inner iterations.
+  """
   total_number_iterations::Int64
 
   """
   Latest required_ratio. This field is only used with the adaptive step size.
-The proof of Theorem 1 requires 1 >= required_ratio.
+  The proof of Theorem 1 requires 1 >= required_ratio.
   """
   required_ratio::Union{Float64,Nothing}
 
   """
-Primal rescaling parameters.
-"""
-  primal_norm_params::Vector{Float64}
+  Primal rescaling parameters.
   """
-Dual rescaling parameters.
-"""
+  primal_norm_params::Vector{Float64}
+
+  """
+  Dual rescaling parameters.
+  """
   dual_norm_params::Vector{Float64}
 end
 
@@ -716,7 +719,7 @@ function optimize(
     false,               # numerical_error
     0.0,                 # cumulative_kkt_passes
     0,                   # total_number_iterations
-    nothing,               # required_ratio
+    nothing,             # required_ratio
     zeros(primal_size),  #primal_norm_params
     zeros(primal_size),  #dual_norm_params
   )
