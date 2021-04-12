@@ -242,7 +242,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 200,
       primal_importance = 1.0,
-      diagonal_scaling = "l1",
       verbosity = 0,
     )
     problem = example_qp()
@@ -254,7 +253,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 200,
       primal_importance = 1.0,
-      diagonal_scaling = "l1",
       verbosity = 0,
     )
     problem = example_qp2()
@@ -268,7 +266,6 @@ end
         l2_norm_rescaling = true,
         iteration_limit = 200,
         primal_importance = 1.0,
-        diagonal_scaling = "l1",
         verbosity = 0,
       )
       problem = example_qp2()
@@ -281,7 +278,6 @@ end
         l_inf_ruiz_iterations = 10,
         iteration_limit = 200,
         primal_importance = 1.0,
-        diagonal_scaling = "l1",
         verbosity = 0,
       )
       problem = example_qp2()
@@ -290,9 +286,10 @@ end
       @test output.dual_solution ≈ [0.0] atol = 1.0e-4
     end
     @testset "Pock-Chambolle rescaling" begin
+      # TODO: Investigate why so many iterations are required.
       parameters = generate_primal_dual_hybrid_gradient_params(
         pock_chambolle_alpha = 1.0,
-        iteration_limit = 2000,
+        iteration_limit = 3000,
         primal_importance = 1.0,
         verbosity = 0,
       )
@@ -301,30 +298,6 @@ end
       @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-4
       @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-4
     end
-  end
-  @testset "diagonal_scaling=l2" begin
-    parameters = generate_primal_dual_hybrid_gradient_params(
-      iteration_limit = 300,
-      primal_importance = 1.0,
-      diagonal_scaling = "l2",
-      verbosity = 0,
-    )
-    problem = example_lp()
-    output = FirstOrderLp.optimize(parameters, problem)
-    @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-4
-    @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-4
-  end
-  @testset "diagonal_scaling=l1" begin
-    parameters = generate_primal_dual_hybrid_gradient_params(
-      iteration_limit = 300,
-      primal_importance = 1.0,
-      diagonal_scaling = "l1",
-      verbosity = 0,
-    )
-    problem = example_lp()
-    output = FirstOrderLp.optimize(parameters, problem)
-    @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-4
-    @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-4
   end
   @testset "High precision" begin
     parameters = generate_primal_dual_hybrid_gradient_params(

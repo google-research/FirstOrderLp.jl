@@ -902,8 +902,6 @@ function generic_final_log(
   problem::QuadraticProgrammingProblem,
   current_primal_solution::AbstractVector{Float64},
   current_dual_solution::AbstractVector{Float64},
-  primal_norm_weights::AbstractVector{Float64},
-  dual_norm_weights::AbstractVector{Float64},
   last_iteration_stats::IterationStats,
   verbosity::Int64,
   iteration::Int64,
