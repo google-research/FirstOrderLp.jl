@@ -143,75 +143,64 @@ A PdhgSolverState struct specifies the state of the solver.
 It is used to pass information among the main solver function and other helper functions.
 """
 mutable struct PdhgSolverState
-  """
-  Current primal solution.
-  """
   current_primal_solution::Vector{Float64}
 
-  """
-  Current dual solution.
-  """
   current_dual_solution::Vector{Float64}
 
   """
-  Current primal delta. That is current_primal_solution - previous_primal_solution.
-  """
+Current primal delta. That is current_primal_solution - previous_primal_solution.
+"""
   delta_primal::Vector{Float64}
 
   """
-  Current dual delta. That is current_dual_solution - previous_dual_solution.
-  """
+Current dual delta. That is current_dual_solution - previous_dual_solution.
+"""
   delta_dual::Vector{Float64}
 
   """
-  A cache of constraint_matrix' * current_dual_solution.
-  """
+A cache of constraint_matrix' * current_dual_solution.
+"""
   current_dual_product::Vector{Float64}
 
   solution_weighted_avg::SolutionWeightedAverage
 
-  """
-  Current step size.
-  """
   step_size::Float64
 
-  """
-  Current primal weight.
-  """
   primal_weight::Float64
 
   """
-  True only if the solver didn't move in the previous iteration.
-  """
+True only if the solver was unable to take a step in the previous iterations because of numerical issues, and must terminate on the next step.
+"""
   numerical_error::Bool
 
   """
-  Number of KKT passes so far.
-  """
+Number of KKT passes so far.
+"""
   cumulative_kkt_passes::Float64
 
   """
-  Total number of iterations. This includes inner iterations.
-  """
+Total number of iterations. This includes inner iterations.
+"""
   total_number_iterations::Int64
 
   """
-  Latest required_ratio. The proof of Theorem 1 requires 1 >= required_ratio.
+  Latest required_ratio. This field is only used with the adaptive step size.
+The proof of Theorem 1 requires 1 >= required_ratio.
   """
-  required_ratio::Float64
+  required_ratio::Union{Float64,Nothing}
 
   """
-  Primal rescaling parameters.
-  """
+Primal rescaling parameters.
+"""
   primal_norm_params::Vector{Float64}
   """
-  Dual rescaling parameters.
-  """
+Dual rescaling parameters.
+"""
   dual_norm_params::Vector{Float64}
 end
 
 """
-Cached information about the objective and constrained matrices.
+Cached information about the objective and constraint matrices.
 """
 struct MatrixInformation
   diagonal_objective_matrix::Vector{Float64}
@@ -277,25 +266,40 @@ function pdhg_specific_log(
   original_primal_norm_params::Vector{Float64},
   original_dual_norm_params::Vector{Float64},
   step_size::Float64,
-  required_ratio::Float64,
+  required_ratio::Union{Float64,Nothing},
   primal_weight::Float64,
 )
   Printf.@printf(
-    "   %5d norms=(%9g, %9g) weighted_norm=(%9g, %9g) inv_step_size=%9g req'd=%9g ",
+    "   %5d norms=(%9g, %9g) weighted_norm=(%9g, %9g) inv_step_size=%9g ",
     iteration,
     norm(current_primal_solution),
     norm(current_dual_solution),
     weighted_norm(current_primal_solution, original_primal_norm_params),
     weighted_norm(current_dual_solution, original_dual_norm_params),
     1 / step_size,
-    required_ratio
   )
-  Printf.@printf(
-    "   primal_weight=%18g dual_obj=%18g  inverse_ss=%18g\n",
-    primal_weight,
-    corrected_dual_obj(problem, current_primal_solution, current_dual_solution),
-    required_ratio
-  )
+  if !isnothing(required_ratio)
+    Printf.@printf(
+      "   primal_weight=%18g dual_obj=%18g  inverse_ss=%18g\n",
+      primal_weight,
+      corrected_dual_obj(
+        problem,
+        current_primal_solution,
+        current_dual_solution,
+      ),
+      required_ratio
+    )
+  else
+    Printf.@printf(
+      "   primal_weight=%18g dual_obj=%18g\n",
+      primal_weight,
+      corrected_dual_obj(
+        problem,
+        current_primal_solution,
+        current_dual_solution,
+      )
+    )
+  end
 end
 
 """
@@ -471,24 +475,22 @@ function compute_next_dual_solution(
   return next_dual, next_dual_product
 end
 
-function update_solver_state!(
+"""
+Updates the solution fields of the solver state with the arguments given.
+The function modifies the first argument: solver_state.
+"""
+function update_solution_in_solver_state(
   solver_state::PdhgSolverState,
   next_primal::Vector{Float64},
   next_dual::Vector{Float64},
   next_dual_product::Vector{Float64},
-  step_size::Float64,
-  primal_norm_params::Vector{Float64},
-  dual_norm_params::Vector{Float64},
 )
 
   solver_state.delta_primal = next_primal - solver_state.current_primal_solution
   solver_state.delta_dual = next_dual - solver_state.current_dual_solution
   solver_state.current_primal_solution = next_primal
   solver_state.current_dual_solution = next_dual
-  solver_state.step_size = step_size
   solver_state.current_dual_product = next_dual_product
-  solver_state.primal_norm_params = primal_norm_params
-  solver_state.dual_norm_params = dual_norm_params
 
   weight = solver_state.step_size
   add_to_solution_weighted_average(
@@ -511,8 +513,6 @@ function compute_interaction_and_movement(
   next_primal::Vector{Float64},
   next_dual::Vector{Float64},
   next_dual_product::Vector{Float64},
-  primal_norm_params::Vector{Float64},
-  dual_norm_params::Vector{Float64},
 )
   delta_primal = next_primal .- solver_state.current_primal_solution
   delta_dual = next_dual .- solver_state.current_dual_solution
@@ -527,21 +527,22 @@ function compute_interaction_and_movement(
     0.5 *
     weighted_norm(
       delta_primal,
-      primal_norm_params - matrix_information.diagonal_objective_matrix,
-    )^2 + 0.5 * weighted_norm(delta_dual, dual_norm_params)^2
+      solver_state.primal_norm_params -
+      matrix_information.diagonal_objective_matrix,
+    )^2 + 0.5 * weighted_norm(delta_dual, solver_state.dual_norm_params)^2
   return interaction, movement
 end
 
 """
 Takes a step using the adaptive step size.
+It modifies the third argument: solver_state.
 """
-function take_adaptive_step!(
+function take_adaptive_step(
   params::PdhgParameters,
   problem::QuadraticProgrammingProblem,
   solver_state::PdhgSolverState,
   matrix_information::MatrixInformation,
 )
-  KKT_PASSES_PER_ITERATION = 1.0
 
   step_size = solver_state.step_size
   done = false
@@ -550,18 +551,19 @@ function take_adaptive_step!(
   while !done
     iter += 1
     solver_state.total_number_iterations += 1
-    primal_norm_params, dual_norm_params = define_norms(
-      params.diagonal_scaling,
-      matrix_information,
-      step_size,
-      solver_state.primal_weight,
-    )
+    solver_state.primal_norm_params, solver_state.dual_norm_params =
+      define_norms(
+        params.diagonal_scaling,
+        matrix_information,
+        step_size,
+        solver_state.primal_weight,
+      )
 
     next_primal = compute_next_primal_solution(
       problem,
       solver_state.current_primal_solution,
       solver_state.current_dual_product,
-      primal_norm_params,
+      solver_state.primal_norm_params,
     )
 
     next_dual, next_dual_product = compute_next_dual_solution(
@@ -569,7 +571,7 @@ function take_adaptive_step!(
       solver_state.current_primal_solution,
       next_primal,
       solver_state.current_dual_solution,
-      dual_norm_params,
+      solver_state.dual_norm_params,
     )
     interaction, movement = compute_interaction_and_movement(
       solver_state,
@@ -578,10 +580,8 @@ function take_adaptive_step!(
       next_primal,
       next_dual,
       next_dual_product,
-      primal_norm_params,
-      dual_norm_params,
     )
-    solver_state.cumulative_kkt_passes += KKT_PASSES_PER_ITERATION
+    solver_state.cumulative_kkt_passes += 1
 
     if movement == 0.0
       # The algorithm will terminate at the beginning of the next iteration
@@ -592,14 +592,11 @@ function take_adaptive_step!(
     solver_state.required_ratio = interaction / movement
 
     if solver_state.required_ratio <= 1
-      update_solver_state!(
+      update_solution_in_solver_state(
         solver_state,
         next_primal,
         next_dual,
         next_dual_product,
-        step_size,
-        primal_norm_params,
-        dual_norm_params,
       )
       done = true
     end
@@ -631,15 +628,15 @@ end
 
 """
 Takes a step with constant step size.
+It modifies the third argument: solver_state.
 """
-function take_constant_step_size_step!(
+function take_constant_step_size_step(
   params::PdhgParameters,
   problem::QuadraticProgrammingProblem,
   solver_state::PdhgSolverState,
   matrix_information::MatrixInformation,
 )
-  KKT_PASSES_PER_ITERATION = 1.0
-  primal_norm_params, dual_norm_params = define_norms(
+  solver_state.primal_norm_params, solver_state.dual_norm_params = define_norms(
     params.diagonal_scaling,
     matrix_information,
     solver_state.step_size,
@@ -649,7 +646,7 @@ function take_constant_step_size_step!(
     problem,
     solver_state.current_primal_solution,
     solver_state.current_dual_product,
-    primal_norm_params,
+    solver_state.primal_norm_params,
   )
 
   next_dual, next_dual_product = compute_next_dual_solution(
@@ -657,40 +654,18 @@ function take_constant_step_size_step!(
     solver_state.current_primal_solution,
     next_primal,
     solver_state.current_dual_solution,
-    dual_norm_params,
+    solver_state.dual_norm_params,
   )
 
-  solver_state.cumulative_kkt_passes += KKT_PASSES_PER_ITERATION
-  interaction, movement = compute_interaction_and_movement(
+  solver_state.cumulative_kkt_passes += 1
+
+  update_solution_in_solver_state(
     solver_state,
-    problem,
-    matrix_information,
     next_primal,
     next_dual,
     next_dual_product,
-    primal_norm_params,
-    dual_norm_params,
   )
-  if movement == 0.0
-    # The algorithm will terminate at the beginning of the next iteration
-    solver_state.numerical_error = true
-    return
-  end
-  # The proof of Theorem 1 requires movement >= interaction.
-  solver_state.required_ratio = interaction / movement
 
-  if solver_state.required_ratio <= 1
-    update_solver_state!(
-      solver_state,
-      next_primal,
-      next_dual,
-      next_dual_product,
-      solver_state.step_size,
-      primal_norm_params,
-      dual_norm_params,
-    )
-    done = true
-  end
 end
 
 """
@@ -741,7 +716,7 @@ function optimize(
     false,               # numerical_error
     0.0,                 # cumulative_kkt_passes
     0,                   # total_number_iterations
-    1.0,               # required_ratio
+    nothing,               # required_ratio
     zeros(primal_size),  #primal_norm_params
     zeros(primal_size),  #dual_norm_params
   )
@@ -1006,9 +981,9 @@ function optimize(
     end
 
     if params.adaptive_step_size
-      take_adaptive_step!(params, problem, solver_state, matrix_information)
+      take_adaptive_step(params, problem, solver_state, matrix_information)
     else
-      take_constant_step_size_step!(
+      take_constant_step_size_step(
         params,
         problem,
         solver_state,
