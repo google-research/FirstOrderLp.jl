@@ -30,7 +30,7 @@ jobs:
           if out == ""
               exit(0)
           else
-              @error "The following files are not properly formatted:"
+              @info "The following files are not properly formatted:"
               write(stdout, out)
               @info "See the README for how to run the auto-formatter."
               exit(1)
