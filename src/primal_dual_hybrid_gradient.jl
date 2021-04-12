@@ -13,12 +13,15 @@
 # limitations under the License.
 
 """
-Parameters of the Malitsky and Pock lineseach algorithm (https://arxiv.org/pdf/1608.08883.pdf).
-"""
+Parameters of the Malitsky and Pock lineseach algorithm
+(https://arxiv.org/pdf/1608.08883.pdf).
+ """
+
 struct MalitskyPockStepsizeParameters
+
   """
-  Contraction factor by which the step size is multiply for in the inner loop.
-  Corresponds to mu in the paper.
+  Contraction factor by which the step size is multiply for in the inner
+  loop. Corresponds to mu in the paper.
   """
   contraction_factor::Float64
 
@@ -29,15 +32,18 @@ struct MalitskyPockStepsizeParameters
   breaking_factor::Float64
 
   """
-  Interpolation coefficient to pick next step size. The next step size can be picked within an interval [a, b] (See Step 2 of Algorithm 1). The solver uses
+  Interpolation coefficient to pick next step size. The next step size can be
+  picked within an interval [a, b] (See Step 2 of Algorithm 1). The solver uses
   a + interpolation_coefficient * (b - a).
   """
   interpolation_coefficient::Float64
 end
 
 """
-Parameters used for the adaptive stepsize policy. For details see take_adaptive_step function below.
+Parameters used for the adaptive stepsize policy. For details see
+take_adaptive_step function below.
 """
+
 struct AdaptiveStepsizeParams
   exponent_one::Float64
   exponent_two::Float64
@@ -139,35 +145,41 @@ struct PdhgParameters
   diagonal_scaling::String
 
   """
-If >= 4 a line of debugging info is printed during some iterations. If >= 2
-some info is printed about the final solution.
-"""
+  If >= 4 a line of debugging info is printed during some iterations. If >= 2
+  some info is printed about the final solution.
+  """
   verbosity::Int64
 
   """
-Whether to record an IterationStats proto.
-"""
+  Whether to record an IterationStats proto.
+  """
   record_iteration_stats::Bool
 
   """
-Check for termination with this frequency (in iterations).
-"""
+  Check for termination with this frequency (in iterations).
+  """
   termination_evaluation_frequency::Int32
 
   """
-The termination criteria for the algorithm.
-"""
+  The termination criteria for the algorithm.
+  """
   termination_criteria::TerminationCriteria
 
   """
-Parameters that control when the algorithm restarts and whether it resets to
-the average or the current iterate. Also, controls the primal weight updates.
-"""
+  Parameters that control when the algorithm restarts and whether it resets
+  to the average or the current iterate. Also, controls the primal weight
+  updates.
+  """
+
   restart_params::RestartParameters
 
   """
-  Parameters of the step size policy. There are three step size policies implemented: Adaptive, Malitsky and Pock, and constant step size. If 'nothing', the solver uses a constant step size computed using power iteration.
+  Parameters of the step size policy. There are three step size policies
+  implemented: Adaptive, Malitsky and Pock, and constant step size. If
+  'nothing', the solver uses a constant step size computed using power
+  iteration.
   """
+
   step_size_policy_params::Union{
     MalitskyPockStepsizeParameters,
     AdaptiveStepsizeParams,
