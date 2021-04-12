@@ -327,14 +327,6 @@ function parse_command_line()
     arg_type = String
     default = "gap_over_distance_squared"
 
-    "--adaptive_step_size"
-    help =
-      "PDHG only. If this is true use an adaptive step size rule. " *
-      "Otherwise, use a constant step size corresponding to an estimate of " *
-      "the maximum singular value"
-    arg_type = Bool
-    default = true
-
     "--use_approximate_localized_duality_gap"
     help =
       "Whether to use an approximate localized duality gap in the " *
@@ -411,6 +403,41 @@ function parse_command_line()
       "free (the default)."
     arg_type = Bool
     default = false
+
+    # The following parameters define the step size policy.
+    "--step-size-policy"
+    help =
+      "Step size policy used for PDHG. This is ignored for Mirror-prox." *
+      " Supported options {constant, adaptive, malitsky-pock}. Defaults to 'adaptive'. For the constant step size the solver computes a provably correct step size using power iteration."
+    arg_type = String
+    default = "adaptive"
+
+    "--exponent-one"
+    help = "Adaptive step size rule parameter."
+    arg_type = Float64
+    default = 0.3
+
+    "--exponent-two"
+    help = "Adaptive step size rule parameter."
+    arg_type = Float64
+    default = 0.6
+
+    "--contraction-factor"
+    help = "Malitsky and Pock step size parameter. Contraction factor by which the step size is multiply for in the inner loop. Corresponds to mu in the paper (https://arxiv.org/pdf/1608.08883.pdf)."
+    arg_type = Float64
+    default = 0.7
+
+    "--breaking-factor"
+    help = "Malitsky and Pock step size parameter. The breaking factor defines the stopping criteria of the linesearch. It should be a number between (0.0, 1.0). Corresponds to delta in the paper (https://arxiv.org/pdf/1608.08883.pdf)."
+    arg_type = Float64
+    default = 0.99
+
+    "--interpolation-coefficient"
+    help = "Malitsky and Pock step size parameter. Interpolation coefficient to pick next step size. The next step size can be picked within an interval [a, b] (See Step 2 of Algorithm 1 in https://arxiv.org/pdf/1608.08883.pdf). The solver uses
+  a + interpolation_coefficient * (b - a)."
+    arg_type = Float64
+    default = 1.0
+
   end
 
   return ArgParse.parse_args(arg_parse)
@@ -502,18 +529,32 @@ function main()
         restart_params,
       )
     elseif parsed_args["method"] == "pdhg"
+      if parsed_args["step_size"] == "malitsky-pock"
+        step_size_policy_params = FirstOrderLp.MalitskyPockStepsizeParameters(
+          parsed_args["contraction_factor"],
+          parsed_args["breaking_factor"],
+          parsed_args["interpolation_coefficient"],
+        )
+      elseif parsed_args["step_size"] == "constant"
+        step_size_policy_params = nothing
+      else
+        step_size_policy_params = FirstOrderLp.MalitskyPockStepsizeParameters(
+          parsed_args["exponent_one"],
+          parsed_args["exponent_two"],
+        )
+      end
       parameters = FirstOrderLp.PdhgParameters(
         parsed_args["l_inf_ruiz_iterations"],
         parsed_args["l2_norm_rescaling"],
         pock_chambolle_alpha,
         parsed_args["primal_importance"],
         parsed_args["diagonal_scaling"],
-        parsed_args["adaptive_step_size"],
         parsed_args["verbosity"],
         parsed_args["record_iteration_stats"],
         parsed_args["termination_evaluation_frequency"],
         termination_criteria,
         restart_params,
+        step_size_policy_params,
       )
     end
   else

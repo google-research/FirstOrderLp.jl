@@ -13,6 +13,37 @@
 # limitations under the License.
 
 """
+Parameters of the Malitsky and Pock lineseach algorithm (https://arxiv.org/pdf/1608.08883.pdf).
+"""
+struct MalitskyPockStepsizeParameters
+  """
+  Contraction factor by which the step size is multiply for in the inner loop.
+  Corresponds to mu in the paper.
+  """
+  contraction_factor::Float64
+
+  """
+  Breaking factor that defines the stopping criteria of the linesearch.
+  Corresponds to delta in the paper.
+  """
+  breaking_factor::Float64
+
+  """
+  Interpolation coefficient to pick next step size. The next step size can be picked within an interval [a, b] (See Step 2 of Algorithm 1). The solver uses
+  a + interpolation_coefficient * (b - a).
+  """
+  interpolation_coefficient::Float64
+end
+
+"""
+Parameters used for the adaptive stepsize policy. For details see take_adaptive_step function below.
+"""
+struct AdaptiveStepsizeParams
+  exponent_one::Float64
+  exponent_two::Float64
+end
+
+"""
 A PdhgParameters struct specifies the parameters for solving the saddle
 point formulation of an problem using primal-dual hybrid gradient.
 Quadratic Programming Problem (see quadratic_programming.jl):
@@ -76,7 +107,6 @@ overrelaxed and intertial variants in Chambolle and Pock and the algorithm in
 Saddle Point Problems" by Bingsheng He, Feng Ma, Xiaoming Yuan
 (http://www.optimization-online.org/DB_FILE/2016/02/5315.pdf).
 """
-
 struct PdhgParameters
   """
   Number of L_infinity Ruiz rescaling iterations to apply to the constraint
@@ -108,34 +138,41 @@ struct PdhgParameters
   """
   diagonal_scaling::String
 
-  adaptive_step_size::Bool
-
   """
-  If >= 4 a line of debugging info is printed during some iterations. If >= 2
-  some info is printed about the final solution.
-  """
+If >= 4 a line of debugging info is printed during some iterations. If >= 2
+some info is printed about the final solution.
+"""
   verbosity::Int64
 
   """
-  Whether to record an IterationStats proto.
-  """
+Whether to record an IterationStats proto.
+"""
   record_iteration_stats::Bool
 
   """
-  Check for termination with this frequency (in iterations).
-  """
+Check for termination with this frequency (in iterations).
+"""
   termination_evaluation_frequency::Int32
 
   """
-  The termination criteria for the algorithm.
-  """
+The termination criteria for the algorithm.
+"""
   termination_criteria::TerminationCriteria
 
   """
-  Parameters that control when the algorithm restarts and whether it resets to
-  the average or the current iterate. Also, controls the primal weight updates.
-  """
+Parameters that control when the algorithm restarts and whether it resets to
+the average or the current iterate. Also, controls the primal weight updates.
+"""
   restart_params::RestartParameters
+
+  """
+  Parameters of the step size policy. There are three step size policies implemented: Adaptive, Malitsky and Pock, and constant step size. If 'nothing', the solver uses a constant step size computed using power iteration.
+  """
+  step_size_policy_params::Union{
+    MalitskyPockStepsizeParameters,
+    AdaptiveStepsizeParams,
+    Nothing,
+  }
 end
 
 """
@@ -190,13 +227,20 @@ The proof of Theorem 1 requires 1 >= required_ratio.
   required_ratio::Union{Float64,Nothing}
 
   """
-Primal rescaling parameters.
-"""
-  primal_norm_params::Vector{Float64}
+  Primal rescaling parameters.
   """
-Dual rescaling parameters.
-"""
+  primal_norm_params::Vector{Float64}
+
+  """
+  Dual rescaling parameters.
+  """
   dual_norm_params::Vector{Float64}
+
+  """
+  Ratio between the last two step sizes: step_size(n)/step_size(n-1).
+  It is only saved while using Malitsky and Pock linesearch.
+  """
+  ratio_step_sizes::Union{Float64,Nothing}
 end
 
 """
@@ -462,13 +506,16 @@ function compute_next_dual_solution(
   current_primal_solution::Vector{Float64},
   next_primal::Vector{Float64},
   current_dual_solution::Vector{Float64},
-  dual_norm_params::Vector{Float64},
+  dual_norm_params::Vector{Float64};
+  damping_coefficient::Float64 = 1.0,
 )
   # The next two lines compute the dual portion:
-  # argmin_y [H*(y) - y' K (2.0*next_primal - current_primal_solution)
+  # argmin_y [H*(y) - y' K (next_primal + damping_coefficient*(next_primal - current_primal_solution)
   #           + 0.5*norm_Y(y-current_dual_solution)^2]
-  dual_gradient =
-    compute_dual_gradient(problem, 2.0 * next_primal - current_primal_solution)
+  dual_gradient = compute_dual_gradient(
+    problem,
+    next_primal + damping_coefficient * (next_primal - current_primal_solution),
+  )
   next_dual = current_dual_solution .+ dual_gradient ./ dual_norm_params
   project_dual!(next_dual, problem)
   next_dual_product = problem.constraint_matrix' * next_dual
@@ -531,6 +578,78 @@ function compute_interaction_and_movement(
       matrix_information.diagonal_objective_matrix,
     )^2 + 0.5 * weighted_norm(delta_dual, solver_state.dual_norm_params)^2
   return interaction, movement
+end
+
+"""
+Takes a step using Malitsky and Pock linesearch.
+It modifies the thisd arguement: solver_state.
+"""
+function take_malitsky_pock_step(
+  params::PdhgParameters,
+  problem::QuadraticProgrammingProblem,
+  solver_state::PdhgSolverState,
+  matrix_information::MatrixInformation,
+)
+  step_size = solver_state.step_size
+  ratio_step_sizes = solver_state.ratio_step_sizes
+  done = false
+  iter = 0
+  solver_state.primal_norm_params, solver_state.dual_norm_params = define_norms(
+    params.diagonal_scaling,
+    matrix_information,
+    step_size,
+    solver_state.primal_weight,
+  )
+
+  next_primal = compute_next_primal_solution(
+    problem,
+    solver_state.current_primal_solution,
+    solver_state.current_dual_product,
+    solver_state.primal_norm_params,
+  )
+  step_size =
+    step_size +
+    params.step_size_policy_params.interpolation_coefficient *
+    (sqrt(1 + ratio_step_sizes) - 1) *
+    step_size
+  while !done
+    iter += 1
+    solver_state.total_number_iterations += 1
+    ratio_step_sizes = step_size / solver_state.step_size
+
+    solver_state.primal_norm_params, solver_state.dual_norm_params =
+      define_norms(
+        params.diagonal_scaling,
+        matrix_information,
+        step_size,
+        solver_state.primal_weight,
+      )
+
+    next_dual, next_dual_product = compute_next_dual_solution(
+      problem,
+      solver_state.current_primal_solution,
+      next_primal,
+      solver_state.current_dual_solution,
+      solver_state.dual_norm_params;
+      damping_coefficient = ratio_step_sizes,
+    )
+    delta_dual = next_dual .- solver_state.current_dual_solution
+    delta_dual_product = next_dual_product .- solver_state.current_dual_product
+
+    if step_size * norm(delta_dual_product) <=
+       params.step_size_policy_params.breaking_factor * norm(delta_dual)
+      update_solution_in_solver_state(
+        solver_state,
+        next_primal,
+        next_dual,
+        next_dual_product,
+      )
+      done = true
+    end
+    step_size *= params.step_size_policy_params.contraction_factor
+  end
+  solver_state.step_size = step_size
+  solver_state.ratio_step_sizes = ratio_step_sizes
 end
 
 """
@@ -601,6 +720,8 @@ function take_adaptive_step(
       done = true
     end
 
+    # exponent_one = params.step_size_policy_params.exponent_one
+    # exponent_two = params.step_size_policy_params.exponent_two
     exponent_one = 0.3
     exponent_two = 0.6
     # Our step sizes are a factor
@@ -716,14 +837,19 @@ function optimize(
     false,               # numerical_error
     0.0,                 # cumulative_kkt_passes
     0,                   # total_number_iterations
-    nothing,               # required_ratio
-    zeros(primal_size),  #primal_norm_params
-    zeros(primal_size),  #dual_norm_params
+    nothing,             # required_ratio
+    zeros(primal_size),  # primal_norm_params
+    zeros(primal_size),  # dual_norm_params
+    nothing,             # ratio_step_sizes
   )
 
-  if params.adaptive_step_size
+  if params.step_size_policy_params isa AdaptiveStepsizeParams
     solver_state.cumulative_kkt_passes += 0.5
     solver_state.step_size = 1.0 / norm(problem.constraint_matrix, Inf)
+  elseif params.step_size_policy_params isa MalitskyPockStepsizeParameters
+    solver_state.cumulative_kkt_passes += 0.5
+    solver_state.step_size = 1.0 / norm(problem.constraint_matrix, Inf)
+    solver_state.ratio_step_sizes = 1.0
   else
     desired_relative_error = 0.2
     maximum_singular_value, number_of_power_iterations =
@@ -980,7 +1106,9 @@ function optimize(
       )
     end
 
-    if params.adaptive_step_size
+    if params.step_size_policy_params isa MalitskyPockStepsizeParameters
+      take_malitsky_pock_step(params, problem, solver_state, matrix_information)
+    elseif params.step_size_policy_params isa AdaptiveStepsizeParams
       take_adaptive_step(params, problem, solver_state, matrix_information)
     else
       take_constant_step_size_step(
@@ -989,6 +1117,7 @@ function optimize(
         solver_state,
         matrix_information,
       )
+
     end
 
     time_spent_doing_basic_algorithm +=
