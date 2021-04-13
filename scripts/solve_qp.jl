@@ -289,7 +289,7 @@ function parse_command_line()
 
     "--diagonal_scaling"
     help =
-      "Supported {off, l1, l2}. Use a diagonal matrix to " *
+      "Mirror-prox only. Supported {off, l1, l2}. Use a diagonal matrix to " *
       "define the Bregman distance or, equivalently, rescale the primal " *
       "and dual variables individually."
     arg_type = String
@@ -507,7 +507,6 @@ function main()
         parsed_args["l2_norm_rescaling"],
         pock_chambolle_alpha,
         parsed_args["primal_importance"],
-        parsed_args["diagonal_scaling"],
         parsed_args["adaptive_step_size"],
         parsed_args["verbosity"],
         parsed_args["record_iteration_stats"],

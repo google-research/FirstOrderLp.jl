@@ -41,19 +41,8 @@ where
                                 otherwise infinity
 Note that the places where g(x) and h*(y) are infinite effectively limits the
 domain of the min and max. Therefore there's no infinity in the code.
-Here we use Q as the abbreviation of objective_matrix. We use mirror map
-1/2 ||x||_X^2 + 1/2 ||y||_Y^2, where X and Y are diagonal matrices.
-If `diagonal_scaling`=l1, we set
-    X[i,i] = Q[i,i] + (1 / step_size) * (sum_{j!=i}|Q[i,j]| + primal_weight *
-    sum_{j}|K[j,i]|)
-    Y[j,j] = (1 / step_size) / primal_weight / sum_{i}|K[j,i]|
-If `diagonal_scaling`=l2, we set
-    X[i,i] = Q[i,i] + (1 / step_size) * sqrt(sum_{j!=i} Q[i,j]^2 +
-    primal_weight^2 * sum_{j} K[j,i]^2)
-    Y[j,j] = (1 / step_size) / primal_weight / sqrt(sum_{i}K[j,i]^2)
-If `diagonal_scaling`=off, we set
-    X[i,i] = (1 / step_size) * primal_weight
-    Y[j,j] = (1 / step_size) / primal_weight
+We use mirror map
+0.5 * primal_weight * ||x||_2^2 + 0.5 / primal_weight * ||y||_2^2.
 The step_size and primal_weight are parameters described next.
 The parameter primal_weight is adjusted smoothly at each restart; to balance the
 primal and dual distances traveled since the last restart; see
@@ -101,12 +90,6 @@ struct PdhgParameters
   equally.
   """
   primal_importance::Float64
-
-  """
-  Use weighted l2 norm as the Bregman divergence so that it rescales each
-  primal and dual variable.
-  """
-  diagonal_scaling::String
 
   adaptive_step_size::Bool
 
@@ -193,18 +176,9 @@ mutable struct PdhgSolverState
 end
 
 """
-Cached information about the objective and constraint matrices.
-"""
-struct MatrixInformation
-  diagonal_objective_matrix::Vector{Float64}
-  row_norm_objective_matrix::Vector{Float64}
-  row_norm_constraint_matrix::Vector{Float64}
-  column_norm_constraint_matrix::Vector{Float64}
-end
-
-"""
 Defines the primal norm and dual norm using the norms of matrices, step_size
-and primal_weight.
+and primal_weight. This is used only for interacting with general utilities
+in saddle_point.jl. PDHG utilities these norms implicitly.
 """
 function define_norms(
   primal_size::Int64,
@@ -212,11 +186,9 @@ function define_norms(
   step_size::Float64,
   primal_weight::Float64,
 )
-    primal_norm_params =
-      1 / step_size * primal_weight * ones(primal_size)
-    dual_norm_params =
-      1 / step_size / primal_weight *
-      ones(dual_size)
+  # TODO: Should these norms include the step size?
+  primal_norm_params = 1 / step_size * primal_weight * ones(primal_size)
+  dual_norm_params = 1 / step_size / primal_weight * ones(dual_size)
 
   return primal_norm_params, dual_norm_params
 end
@@ -443,7 +415,6 @@ function update_solution_in_solver_state(
   next_dual::Vector{Float64},
   next_dual_product::Vector{Float64},
 )
-
   solver_state.delta_primal = next_primal - solver_state.current_primal_solution
   solver_state.delta_dual = next_dual - solver_state.current_dual_solution
   solver_state.current_primal_solution = next_primal
@@ -479,8 +450,8 @@ function compute_interaction_and_movement(
     delta_primal' * (next_dual_product .- solver_state.current_dual_product)
   interaction = abs(primal_dual_interaction) + abs(primal_objective_interaction)
   movement =
-    0.5 * solver_state.primal_weight *
-    norm(delta_primal)^2 + (0.5 / solver_state.primal_weight) *norm(delta_dual)^2
+    0.5 * solver_state.primal_weight * norm(delta_primal)^2 +
+    (0.5 / solver_state.primal_weight) * norm(delta_dual)^2
   return interaction, movement
 end
 
@@ -536,8 +507,6 @@ function take_adaptive_step(
     else
       step_size_limit = Inf
     end
-    #@show step_size
-    #@show step_size_limit
 
     if step_size <= step_size_limit
       update_solution_in_solver_state(
@@ -551,9 +520,8 @@ function take_adaptive_step(
 
     exponent_one = 0.3
     exponent_two = 0.6
-    # TODO: update comment
     # Our step sizes are a factor
-    # 1 - (iteration + 1)^(-exponent_one)/required_ratio
+    # 1 - (iteration + 1)^(-exponent_one)
     # smaller than they could be as a margin to reduce rejected steps.
     first_term =
       (1 - (solver_state.total_number_iterations + 1)^(-exponent_one)) *
@@ -761,12 +729,12 @@ function optimize(
       method_specific_stats = current_iteration_stats.method_specific_stats
       method_specific_stats["time_spent_doing_basic_algorithm"] =
         time_spent_doing_basic_algorithm
-    
+
       primal_norm_params, dual_norm_params = define_norms(
-      primal_size,
-      dual_size,
-      solver_state.step_size,
-      solver_state.primal_weight,
+        primal_size,
+        dual_size,
+        solver_state.step_size,
+        solver_state.primal_weight,
       )
       update_objective_bound_estimates(
         current_iteration_stats.method_specific_stats,
@@ -874,11 +842,7 @@ function optimize(
     if params.adaptive_step_size
       take_adaptive_step(params, problem, solver_state)
     else
-      take_constant_step_size_step(
-        params,
-        problem,
-        solver_state,
-      )
+      take_constant_step_size_step(params, problem, solver_state)
     end
 
     time_spent_doing_basic_algorithm +=
