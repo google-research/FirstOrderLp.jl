@@ -41,20 +41,25 @@ where
                                 otherwise infinity
 Note that the places where g(x) and h*(y) are infinite effectively limits the
 domain of the min and max. Therefore there's no infinity in the code.
-We use mirror map
-0.5 * primal_weight * ||x||_2^2 + 0.5 / primal_weight * ||y||_2^2.
-The step_size and primal_weight are parameters described next.
+
+The code uses slightly different notation from the Chambolle and Pock paper.
+The primal and dual step sizes are parameterized as:
+  tau = primal_step_size = step_size / primal_weight
+  sigma = dual_step_size = step_size * primal_weight.
+The primal_weight factor is named as such because this parameterization is
+equivalent to defining the Bregman divergences as:
+D_x(x, x bar) = 0.5 * primal_weight ||x - x bar||_2^2, and
+D_y(y, y bar) = 0.5 / primal_weight ||y - y bar||_2^2.
+
 The parameter primal_weight is adjusted smoothly at each restart; to balance the
 primal and dual distances traveled since the last restart; see
 compute_new_primal_weight().
-In the LP case, using this norm is equivalent to parameterizing the primal and
-dual step sizes (tau and sigma in Chambolle and Pock) as:
-    primal_step_size = step_size / primal_weight
-    dual_step_size = step_size * primal_weight
-We adjust step_size to be as large as possible without violating the condition
-assumed in Theorem 1. Adjusting the step size unfortunately seems to invalidate
-that Theorem (unlike the case of mirror prox) but this step size adjustment
-heuristic seems to work fine in practice. See comments in the code for details.
+
+The adaptive rule adjusts step_size to be as large as possible without
+violating the condition assumed in Theorem 1. Adjusting the step size
+unfortunately seems to invalidate that Theorem (unlike the case of mirror prox)
+but this step size adjustment heuristic seems to work fine in practice.
+See comments in the code for details.
 
 TODO: compare the above step size scheme with the scheme by Goldstein
 et al (https://arxiv.org/pdf/1305.0546.pdf).
@@ -361,12 +366,13 @@ function compute_next_primal_solution(
   problem::QuadraticProgrammingProblem,
   current_primal_solution::Vector{Float64},
   current_dual_product::Vector{Float64},
-  primal_step_size::Float64,
+  step_size::Float64,
+  primal_weight::Float64,
 )
   # The next lines compute the primal portion of the PDHG algorithm:
   # argmin_x [gradient(f)(current_primal_solution)'x + g(x)
   #          + current_dual_solution' K x
-  #          + 0.5*norm_X(x - current_primal_solution)^2]
+  #          + (1 / step_size) * D_x(x, current_primal_solution)]
   # See Sections 2-3 of Chambolle and Pock and the comment above
   # PdhgParameters.
   # This minimization is easy to do in closed form since it can be separated
@@ -380,7 +386,8 @@ function compute_next_primal_solution(
     current_dual_product,
   )
 
-  next_primal = current_primal_solution .- primal_step_size .* primal_gradient
+  next_primal =
+    current_primal_solution .- (step_size / primal_weight) .* primal_gradient
   project_primal!(next_primal, problem)
   return next_primal
 end
@@ -390,14 +397,16 @@ function compute_next_dual_solution(
   current_primal_solution::Vector{Float64},
   next_primal::Vector{Float64},
   current_dual_solution::Vector{Float64},
-  dual_step_size::Float64,
+  step_size::Float64,
+  primal_weight::Float64,
 )
   # The next two lines compute the dual portion:
   # argmin_y [H*(y) - y' K (2.0*next_primal - current_primal_solution)
-  #           + 0.5*norm_Y(y-current_dual_solution)^2]
+  #           + (1 / step_size) * D_y(y, current_dual_solution)]
   dual_gradient =
     compute_dual_gradient(problem, 2.0 * next_primal - current_primal_solution)
-  next_dual = current_dual_solution .+ dual_step_size .* dual_gradient
+  next_dual =
+    current_dual_solution .+ (primal_weight * step_size) .* dual_gradient
   project_dual!(next_dual, problem)
   next_dual_product = problem.constraint_matrix' * next_dual
   return next_dual, next_dual_product
@@ -476,7 +485,8 @@ function take_adaptive_step(
       problem,
       solver_state.current_primal_solution,
       solver_state.current_dual_product,
-      step_size / solver_state.primal_weight,
+      step_size,
+      solver_state.primal_weight,
     )
 
     next_dual, next_dual_product = compute_next_dual_solution(
@@ -484,7 +494,8 @@ function take_adaptive_step(
       solver_state.current_primal_solution,
       next_primal,
       solver_state.current_dual_solution,
-      solver_state.primal_weight * step_size,
+      step_size,
+      solver_state.primal_weight,
     )
     interaction, movement = compute_interaction_and_movement(
       solver_state,
@@ -555,7 +566,8 @@ function take_constant_step_size_step(
     problem,
     solver_state.current_primal_solution,
     solver_state.current_dual_product,
-    solver_state.step_size / solver_state.primal_weight,
+    solver_state.step_size,
+    solver_state.primal_weight,
   )
 
   next_dual, next_dual_product = compute_next_dual_solution(
@@ -563,7 +575,8 @@ function take_constant_step_size_step(
     solver_state.current_primal_solution,
     next_primal,
     solver_state.current_dual_solution,
-    solver_state.primal_weight * solver_state.step_size,
+    solver_state.step_size,
+    solver_state.primal_weight,
   )
 
   solver_state.cumulative_kkt_passes += 1
