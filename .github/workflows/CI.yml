@@ -14,7 +14,6 @@ jobs:
         os: [ubuntu-latest]
         arch: [x64]
     steps:
-    # TODO: Add julia-actions/julia-format
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:

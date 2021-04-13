@@ -139,18 +139,12 @@ struct PdhgParameters
 end
 
 """
-A PdhgSolverState struct specifies the state of the solver.
-It is used to pass information among the main solver function and other helper functions.
+A PdhgSolverState struct specifies the state of the solver.  It is used to
+pass information among the main solver function and other helper functions.
 """
 mutable struct PdhgSolverState
-  """
-  Current primal solution.
-  """
   current_primal_solution::Vector{Float64}
 
-  """
-  Current dual solution.
-  """
   current_dual_solution::Vector{Float64}
 
   """
@@ -170,19 +164,15 @@ mutable struct PdhgSolverState
 
   solution_weighted_avg::SolutionWeightedAverage
 
-  """
-  Current step size.
-  """
   step_size::Float64
 
-  """
-  Current primal weight.
-  """
   primal_weight::Float64
 
   """
-  True only if the solver didn't move in the previous iteration.
+  True only if the solver was unable to take a step in the previous
+  iterations because of numerical issues, and must terminate on the next step.
   """
+
   numerical_error::Bool
 
   """
@@ -196,13 +186,14 @@ mutable struct PdhgSolverState
   total_number_iterations::Int64
 
   """
-  Latest required_ratio. The proof of Theorem 1 requires 1 >= required_ratio.
+  Latest required_ratio. This field is only used with the adaptive step size.
+  The proof of Theorem 1 requires 1 >= required_ratio.
   """
-  required_ratio::Float64
+  required_ratio::Union{Float64,Nothing}
 end
 
 """
-Cached information about the objective and constrained matrices.
+Cached information about the objective and constraint matrices.
 """
 struct MatrixInformation
   diagonal_objective_matrix::Vector{Float64}
@@ -239,23 +230,38 @@ function pdhg_specific_log(
   current_primal_solution::Vector{Float64},
   current_dual_solution::Vector{Float64},
   step_size::Float64,
-  required_ratio::Float64,
+  required_ratio::Union{Float64,Nothing},
   primal_weight::Float64,
 )
   Printf.@printf(
-    "   %5d norms=(%9g, %9g) inv_step_size=%9g req'd=%9g ",
+    "   %5d norms=(%9g, %9g) inv_step_size=%9g ",
     iteration,
     norm(current_primal_solution),
     norm(current_dual_solution),
     1 / step_size,
-    required_ratio
   )
-  Printf.@printf(
-    "   primal_weight=%18g dual_obj=%18g  inverse_ss=%18g\n",
-    primal_weight,
-    corrected_dual_obj(problem, current_primal_solution, current_dual_solution),
-    required_ratio
-  )
+  if !isnothing(required_ratio)
+    Printf.@printf(
+      "   primal_weight=%18g dual_obj=%18g  inverse_ss=%18g\n",
+      primal_weight,
+      corrected_dual_obj(
+        problem,
+        current_primal_solution,
+        current_dual_solution,
+      ),
+      required_ratio
+    )
+  else
+    Printf.@printf(
+      "   primal_weight=%18g dual_obj=%18g\n",
+      primal_weight,
+      corrected_dual_obj(
+        problem,
+        current_primal_solution,
+        current_dual_solution,
+      )
+    )
+  end
 end
 
 """
@@ -427,19 +433,21 @@ function compute_next_dual_solution(
   return next_dual, next_dual_product
 end
 
-function update_solver_state!(
+"""
+Updates the solution fields of the solver state with the arguments given.
+The function modifies the first argument: solver_state.
+"""
+function update_solution_in_solver_state(
   solver_state::PdhgSolverState,
   next_primal::Vector{Float64},
   next_dual::Vector{Float64},
   next_dual_product::Vector{Float64},
-  step_size::Float64,
 )
 
   solver_state.delta_primal = next_primal - solver_state.current_primal_solution
   solver_state.delta_dual = next_dual - solver_state.current_dual_solution
   solver_state.current_primal_solution = next_primal
   solver_state.current_dual_solution = next_dual
-  solver_state.step_size = step_size
   solver_state.current_dual_product = next_dual_product
 
   weight = solver_state.step_size
@@ -478,13 +486,13 @@ end
 
 """
 Takes a step using the adaptive step size.
+It modifies the third argument: solver_state.
 """
-function take_adaptive_step!(
+function take_adaptive_step(
   params::PdhgParameters,
   problem::QuadraticProgrammingProblem,
   solver_state::PdhgSolverState,
 )
-  KKT_PASSES_PER_ITERATION = 1.0
 
   step_size = solver_state.step_size
   done = false
@@ -515,7 +523,7 @@ function take_adaptive_step!(
       next_dual,
       next_dual_product,
     )
-    solver_state.cumulative_kkt_passes += KKT_PASSES_PER_ITERATION
+    solver_state.cumulative_kkt_passes += 1
 
     if movement == 0.0
       # The algorithm will terminate at the beginning of the next iteration
@@ -532,12 +540,11 @@ function take_adaptive_step!(
     #@show step_size_limit
 
     if step_size <= step_size_limit
-      update_solver_state!(
+      update_solution_in_solver_state(
         solver_state,
         next_primal,
         next_dual,
         next_dual_product,
-        step_size,
       )
       done = true
     end
@@ -570,14 +577,13 @@ end
 
 """
 Takes a step with constant step size.
+It modifies the third argument: solver_state.
 """
-function take_constant_step_size_step!(
+function take_constant_step_size_step(
   params::PdhgParameters,
   problem::QuadraticProgrammingProblem,
   solver_state::PdhgSolverState,
 )
-  KKT_PASSES_PER_ITERATION = 1.0
-
   next_primal = compute_next_primal_solution(
     problem,
     solver_state.current_primal_solution,
@@ -593,32 +599,14 @@ function take_constant_step_size_step!(
     solver_state.primal_weight * solver_state.step_size,
   )
 
-  solver_state.cumulative_kkt_passes += KKT_PASSES_PER_ITERATION
-  interaction, movement = compute_interaction_and_movement(
+  solver_state.cumulative_kkt_passes += 1
+
+  update_solution_in_solver_state(
     solver_state,
-    problem,
     next_primal,
     next_dual,
     next_dual_product,
   )
-  if movement == 0.0
-    # The algorithm will terminate at the beginning of the next iteration
-    solver_state.numerical_error = true
-    return
-  end
-  # The proof of Theorem 1 requires movement >= interaction.
-  solver_state.required_ratio = interaction / movement
-
-  #if solver_state.required_ratio <= 1
-    update_solver_state!(
-      solver_state,
-      next_primal,
-      next_dual,
-      next_dual_product,
-      solver_state.step_size,
-    )
-    done = true
-  #end
 end
 
 """
@@ -669,7 +657,7 @@ function optimize(
     false,               # numerical_error
     0.0,                 # cumulative_kkt_passes
     0,                   # total_number_iterations
-    1.0,               # required_ratio
+    nothing,             # required_ratio
   )
 
   if params.adaptive_step_size
@@ -884,9 +872,9 @@ function optimize(
     end
 
     if params.adaptive_step_size
-      take_adaptive_step!(params, problem, solver_state)
+      take_adaptive_step(params, problem, solver_state)
     else
-      take_constant_step_size_step!(
+      take_constant_step_size_step(
         params,
         problem,
         solver_state,
