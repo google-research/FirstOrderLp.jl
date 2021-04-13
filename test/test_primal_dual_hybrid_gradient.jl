@@ -244,7 +244,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 700,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
       primal_weight_update_smoothing = 0.0, # this test breaks if smoothing=0.5
       restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
@@ -262,7 +261,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 700,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
       restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
       step_size_policy = "malitsky-pock",

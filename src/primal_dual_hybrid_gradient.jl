@@ -229,7 +229,6 @@ mutable struct PdhgSolverState
   """
   ratio_step_sizes::Union{Float64,Nothing}
 end
-end
 
 """
 Defines the primal norm and dual norm using the norms of matrices, step_size
@@ -525,7 +524,6 @@ function take_malitsky_pock_step(
   params::PdhgParameters,
   problem::QuadraticProgrammingProblem,
   solver_state::PdhgSolverState,
-  matrix_information::MatrixInformation,
 )
   step_size = solver_state.step_size
   ratio_step_sizes = solver_state.ratio_step_sizes
