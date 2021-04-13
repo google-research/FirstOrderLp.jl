@@ -397,8 +397,6 @@ function compute_next_dual_solution(
   #           + 0.5*norm_Y(y-current_dual_solution)^2]
   dual_gradient =
     compute_dual_gradient(problem, 2.0 * next_primal - current_primal_solution)
-  #next_dual = current_dual_solution .+ dual_gradient ./ dual_norm_params
-  # dual_step_size = primal_weight*step_size.
   next_dual = current_dual_solution .+ dual_step_size .* dual_gradient
   project_dual!(next_dual, problem)
   next_dual_product = problem.constraint_matrix' * next_dual
@@ -433,7 +431,8 @@ end
 """
 Computes the interaction and movement of the new iterates.
 The movement is used to check if there is a numerical error (movement == 0.0)
-and based on the theory (Theorem 1) the algorithm only moves if interaction / movement <= step_size
+and based on the theory (Theorem 1) the algorithm only moves if
+interaction / movement <= step_size.
 """
 function compute_interaction_and_movement(
   solver_state::PdhgSolverState,
