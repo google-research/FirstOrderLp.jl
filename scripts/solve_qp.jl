@@ -529,18 +529,18 @@ function main()
         restart_params,
       )
     elseif parsed_args["method"] == "pdhg"
-      if parsed_args["step_size"] == "malitsky-pock"
+      if parsed_args["step-size-policy"] == "malitsky-pock"
         step_size_policy_params = FirstOrderLp.MalitskyPockStepsizeParameters(
           parsed_args["contraction_factor"],
-          parsed_args["breaking_factor"],
-          parsed_args["interpolation_coefficient"],
+          parsed_args["breaking-factor"],
+          parsed_args["interpolation-coefficient"],
         )
-      elseif parsed_args["step_size"] == "constant"
+      elseif parsed_args["step-size-policy"] == "constant"
         step_size_policy_params = nothing
       else
-        step_size_policy_params = FirstOrderLp.MalitskyPockStepsizeParameters(
-          parsed_args["exponent_one"],
-          parsed_args["exponent_two"],
+        step_size_policy_params = FirstOrderLp.AdaptiveStepsizeParams(
+          parsed_args["exponent-one"],
+          parsed_args["exponent-two"],
         )
       end
       parameters = FirstOrderLp.PdhgParameters(
