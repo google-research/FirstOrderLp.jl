@@ -18,7 +18,6 @@ function generate_primal_dual_hybrid_gradient_params(;
   pock_chambolle_alpha = nothing,
   iteration_limit = 200,
   primal_importance = 1.0,
-  diagonal_scaling = "off",
   verbosity = 0,
   record_iteration_stats = true,
   restart_scheme = FirstOrderLp.NO_RESTARTS,
@@ -62,7 +61,6 @@ function generate_primal_dual_hybrid_gradient_params(;
     l2_norm_rescaling,
     pock_chambolle_alpha,
     primal_importance,
-    diagonal_scaling,
     verbosity,
     record_iteration_stats,
     termination_evaluation_frequency,
@@ -78,7 +76,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 300,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
     )
     problem = example_lp()
@@ -90,7 +87,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 1000,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
     )
     problem = example_lp()
@@ -102,7 +98,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 300,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 10,
     )
     problem = example_lp()
@@ -120,7 +115,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 500,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
       # This test breaks if you set restart_scheme=NO_RESTARTS.
       restart_scheme = FirstOrderLp.FIXED_FREQUENCY,
@@ -135,7 +129,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 600,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
       restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
     )
@@ -155,7 +148,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 700,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
       primal_weight_update_smoothing = 0.0, # this test breaks if smoothing=0.5
       restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
@@ -181,7 +173,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 600,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
       restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
       restart_to_current_metric = FirstOrderLp.NO_RESTART_TO_CURRENT,
@@ -202,7 +193,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 600,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
       restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
       restart_to_current_metric = FirstOrderLp.GAP_OVER_DISTANCE,
@@ -223,7 +213,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 200,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
       restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
     )
@@ -239,7 +228,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 300,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
       restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
       use_approximate_localized_duality_gap = true,
@@ -291,7 +279,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 200,
       primal_importance = 1.0,
-      diagonal_scaling = "l1",
       verbosity = 0,
     )
     problem = example_qp()
@@ -303,7 +290,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 200,
       primal_importance = 1.0,
-      diagonal_scaling = "l1",
       verbosity = 0,
     )
     problem = example_qp2()
@@ -317,7 +303,6 @@ end
         l2_norm_rescaling = true,
         iteration_limit = 200,
         primal_importance = 1.0,
-        diagonal_scaling = "l1",
         verbosity = 0,
       )
       problem = example_qp2()
@@ -330,7 +315,6 @@ end
         l_inf_ruiz_iterations = 10,
         iteration_limit = 200,
         primal_importance = 1.0,
-        diagonal_scaling = "l1",
         verbosity = 0,
       )
       problem = example_qp2()
@@ -339,9 +323,10 @@ end
       @test output.dual_solution ≈ [0.0] atol = 1.0e-4
     end
     @testset "Pock-Chambolle rescaling" begin
+      # TODO: Investigate why so many iterations are required.
       parameters = generate_primal_dual_hybrid_gradient_params(
         pock_chambolle_alpha = 1.0,
-        iteration_limit = 2000,
+        iteration_limit = 3000,
         primal_importance = 1.0,
         verbosity = 0,
       )
@@ -351,35 +336,10 @@ end
       @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-4
     end
   end
-  @testset "diagonal_scaling=l2" begin
-    parameters = generate_primal_dual_hybrid_gradient_params(
-      iteration_limit = 300,
-      primal_importance = 1.0,
-      diagonal_scaling = "l2",
-      verbosity = 0,
-    )
-    problem = example_lp()
-    output = FirstOrderLp.optimize(parameters, problem)
-    @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-4
-    @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-4
-  end
-  @testset "diagonal_scaling=l1" begin
-    parameters = generate_primal_dual_hybrid_gradient_params(
-      iteration_limit = 300,
-      primal_importance = 1.0,
-      diagonal_scaling = "l1",
-      verbosity = 0,
-    )
-    problem = example_lp()
-    output = FirstOrderLp.optimize(parameters, problem)
-    @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-4
-    @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-4
-  end
   @testset "High precision" begin
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 800,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
     )
     problem = example_lp()
@@ -391,7 +351,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 800,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
     )
     problem = example_lp()
@@ -405,7 +364,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 400,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
     )
     problem = example_lp_without_bounds()
@@ -417,7 +375,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 15,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
     )
     problem = example_cc_lp()
@@ -437,7 +394,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 150,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
     )
     problem = example_cc_lp()
@@ -460,7 +416,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 100,
       primal_importance = 1.0,
-      diagonal_scaling = "off",
       verbosity = 0,
     )
     problem = example_cc_star_lp()

@@ -793,8 +793,6 @@ function optimize(
           problem,
           primal_part(avg_solution),
           dual_part(avg_solution),
-          primal_part(p.mirror_map_scaling),
-          dual_part(p.mirror_map_scaling),
           current_iteration_stats,
           params.verbosity,
           iteration,
