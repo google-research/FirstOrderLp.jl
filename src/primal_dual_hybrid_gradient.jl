@@ -41,31 +41,25 @@ where
                                 otherwise infinity
 Note that the places where g(x) and h*(y) are infinite effectively limits the
 domain of the min and max. Therefore there's no infinity in the code.
-Here we use Q as the abbreviation of objective_matrix. We use mirror map
-1/2 ||x||_X^2 + 1/2 ||y||_Y^2, where X and Y are diagonal matrices.
-If `diagonal_scaling`=l1, we set
-    X[i,i] = Q[i,i] + (1 / step_size) * (sum_{j!=i}|Q[i,j]| + primal_weight *
-    sum_{j}|K[j,i]|)
-    Y[j,j] = (1 / step_size) / primal_weight / sum_{i}|K[j,i]|
-If `diagonal_scaling`=l2, we set
-    X[i,i] = Q[i,i] + (1 / step_size) * sqrt(sum_{j!=i} Q[i,j]^2 +
-    primal_weight^2 * sum_{j} K[j,i]^2)
-    Y[j,j] = (1 / step_size) / primal_weight / sqrt(sum_{i}K[j,i]^2)
-If `diagonal_scaling`=off, we set
-    X[i,i] = (1 / step_size) * primal_weight
-    Y[j,j] = (1 / step_size) / primal_weight
-The step_size and primal_weight are parameters described next.
+
+The code uses slightly different notation from the Chambolle and Pock paper.
+The primal and dual step sizes are parameterized as:
+  tau = primal_step_size = step_size / primal_weight
+  sigma = dual_step_size = step_size * primal_weight.
+The primal_weight factor is named as such because this parameterization is
+equivalent to defining the Bregman divergences as:
+D_x(x, x bar) = 0.5 * primal_weight ||x - x bar||_2^2, and
+D_y(y, y bar) = 0.5 / primal_weight ||y - y bar||_2^2.
+
 The parameter primal_weight is adjusted smoothly at each restart; to balance the
 primal and dual distances traveled since the last restart; see
 compute_new_primal_weight().
-In the LP case, using this norm is equivalent to parameterizing the primal and
-dual step sizes (tau and sigma in Chambolle and Pock) as:
-    primal_step_size = step_size / primal_weight
-    dual_step_size = step_size * primal_weight
-We adjust step_size to be as large as possible without violating the condition
-assumed in Theorem 1. Adjusting the step size unfortunately seems to invalidate
-that Theorem (unlike the case of mirror prox) but this step size adjustment
-heuristic seems to work fine in practice. See comments in the code for details.
+
+The adaptive rule adjusts step_size to be as large as possible without
+violating the condition assumed in Theorem 1. Adjusting the step size
+unfortunately seems to invalidate that Theorem (unlike the case of mirror prox)
+but this step size adjustment heuristic seems to work fine in practice.
+See comments in the code for details.
 
 TODO: compare the above step size scheme with the scheme by Goldstein
 et al (https://arxiv.org/pdf/1305.0546.pdf).
@@ -101,12 +95,6 @@ struct PdhgParameters
   equally.
   """
   primal_importance::Float64
-
-  """
-  Use weighted l2 norm as the Bregman divergence so that it rescales each
-  primal and dual variable.
-  """
-  diagonal_scaling::String
 
   adaptive_step_size::Bool
 
@@ -190,70 +178,22 @@ mutable struct PdhgSolverState
   The proof of Theorem 1 requires 1 >= required_ratio.
   """
   required_ratio::Union{Float64,Nothing}
-
-  """
-  Primal rescaling parameters.
-  """
-  primal_norm_params::Vector{Float64}
-
-  """
-  Dual rescaling parameters.
-  """
-  dual_norm_params::Vector{Float64}
-end
-
-"""
-Cached information about the objective and constraint matrices.
-"""
-struct MatrixInformation
-  diagonal_objective_matrix::Vector{Float64}
-  row_norm_objective_matrix::Vector{Float64}
-  row_norm_constraint_matrix::Vector{Float64}
-  column_norm_constraint_matrix::Vector{Float64}
 end
 
 """
 Defines the primal norm and dual norm using the norms of matrices, step_size
-and primal_weight.
+and primal_weight. This is used only for interacting with general utilities
+in saddle_point.jl. PDHG utilities these norms implicitly.
 """
 function define_norms(
-  diagonal_scaling::String,
-  matrix_information::MatrixInformation,
+  primal_size::Int64,
+  dual_size::Int64,
   step_size::Float64,
   primal_weight::Float64,
 )
-  diagonal_objective_matrix = matrix_information.diagonal_objective_matrix
-  row_norm_objective_matrix = matrix_information.row_norm_objective_matrix
-  row_norm_constraint_matrix = matrix_information.row_norm_constraint_matrix
-  column_norm_constraint_matrix =
-    matrix_information.column_norm_constraint_matrix
-
-  if diagonal_scaling == "l2"
-    # If `diagonal_scaling`=l2, we set X[i,i]=||K[:,i]||_2 and
-    # Y[j,j]=||K[j,:]||_2
-    primal_norm_params =
-      diagonal_objective_matrix .+
-      1 / step_size *
-      sqrt.(
-        row_norm_objective_matrix .+
-        primal_weight^2 * row_norm_constraint_matrix,
-      )
-    dual_norm_params =
-      1 / step_size / primal_weight * sqrt.(column_norm_constraint_matrix)
-  elseif diagonal_scaling == "l1"
-    primal_norm_params =
-      diagonal_objective_matrix .+
-      1 / step_size *
-      (row_norm_objective_matrix .+ primal_weight * row_norm_constraint_matrix)
-    dual_norm_params =
-      1 / step_size / primal_weight * column_norm_constraint_matrix
-  else
-    primal_norm_params =
-      1 / step_size * primal_weight * ones(length(row_norm_constraint_matrix))
-    dual_norm_params =
-      1 / step_size / primal_weight *
-      ones(length(column_norm_constraint_matrix))
-  end
+  # TODO: Should these norms include the step size?
+  primal_norm_params = 1 / step_size * primal_weight * ones(primal_size)
+  dual_norm_params = 1 / step_size / primal_weight * ones(dual_size)
 
   return primal_norm_params, dual_norm_params
 end
@@ -266,19 +206,15 @@ function pdhg_specific_log(
   iteration::Int64,
   current_primal_solution::Vector{Float64},
   current_dual_solution::Vector{Float64},
-  original_primal_norm_params::Vector{Float64},
-  original_dual_norm_params::Vector{Float64},
   step_size::Float64,
   required_ratio::Union{Float64,Nothing},
   primal_weight::Float64,
 )
   Printf.@printf(
-    "   %5d norms=(%9g, %9g) weighted_norm=(%9g, %9g) inv_step_size=%9g ",
+    "   %5d norms=(%9g, %9g) inv_step_size=%9g ",
     iteration,
     norm(current_primal_solution),
     norm(current_dual_solution),
-    weighted_norm(current_primal_solution, original_primal_norm_params),
-    weighted_norm(current_dual_solution, original_dual_norm_params),
     1 / step_size,
   )
   if !isnothing(required_ratio)
@@ -312,8 +248,6 @@ function pdhg_final_log(
   problem::QuadraticProgrammingProblem,
   avg_primal_solution::Vector{Float64},
   avg_dual_solution::Vector{Float64},
-  original_primal_norm_params::Vector{Float64},
-  original_dual_norm_params::Vector{Float64},
   verbosity::Int64,
   iteration::Int64,
   termination_reason::TerminationReason,
@@ -334,17 +268,15 @@ function pdhg_final_log(
       dual_stats.dual_objective
     )
     Printf.@printf(
-      "  primal norms: L1=%15.10g, L2=%15.10g, weighted L2=%15.10g, Linf=%15.10g\n",
+      "  primal norms: L1=%15.10g, L2=%15.10g, Linf=%15.10g\n",
       norm(avg_primal_solution, 1),
       norm(avg_primal_solution),
-      weighted_norm(avg_primal_solution, original_primal_norm_params),
       norm(avg_primal_solution, Inf)
     )
     Printf.@printf(
-      "  dual norms:   L1=%15.10g, L2=%15.10g, weighted L2=%15.10g, Linf=%15.10g\n",
+      "  dual norms:   L1=%15.10g, L2=%15.10g, Linf=%15.10g\n",
       norm(avg_dual_solution, 1),
       norm(avg_dual_solution),
-      weighted_norm(avg_dual_solution, original_dual_norm_params),
       norm(avg_dual_solution, Inf)
     )
   end
@@ -353,8 +285,6 @@ function pdhg_final_log(
     problem,
     avg_primal_solution,
     avg_dual_solution,
-    original_primal_norm_params,
-    original_dual_norm_params,
     last_iteration_stats,
     verbosity,
     iteration,
@@ -436,12 +366,13 @@ function compute_next_primal_solution(
   problem::QuadraticProgrammingProblem,
   current_primal_solution::Vector{Float64},
   current_dual_product::Vector{Float64},
-  primal_norm_params::Vector{Float64},
+  step_size::Float64,
+  primal_weight::Float64,
 )
   # The next lines compute the primal portion of the PDHG algorithm:
   # argmin_x [gradient(f)(current_primal_solution)'x + g(x)
   #          + current_dual_solution' K x
-  #          + 0.5*norm_X(x - current_primal_solution)^2]
+  #          + (1 / step_size) * D_x(x, current_primal_solution)]
   # See Sections 2-3 of Chambolle and Pock and the comment above
   # PdhgParameters.
   # This minimization is easy to do in closed form since it can be separated
@@ -455,7 +386,8 @@ function compute_next_primal_solution(
     current_dual_product,
   )
 
-  next_primal = current_primal_solution .- primal_gradient ./ primal_norm_params
+  next_primal =
+    current_primal_solution .- (step_size / primal_weight) .* primal_gradient
   project_primal!(next_primal, problem)
   return next_primal
 end
@@ -465,14 +397,16 @@ function compute_next_dual_solution(
   current_primal_solution::Vector{Float64},
   next_primal::Vector{Float64},
   current_dual_solution::Vector{Float64},
-  dual_norm_params::Vector{Float64},
+  step_size::Float64,
+  primal_weight::Float64,
 )
   # The next two lines compute the dual portion:
   # argmin_y [H*(y) - y' K (2.0*next_primal - current_primal_solution)
-  #           + 0.5*norm_Y(y-current_dual_solution)^2]
+  #           + (1 / step_size) * D_y(y, current_dual_solution)]
   dual_gradient =
     compute_dual_gradient(problem, 2.0 * next_primal - current_primal_solution)
-  next_dual = current_dual_solution .+ dual_gradient ./ dual_norm_params
+  next_dual =
+    current_dual_solution .+ (primal_weight * step_size) .* dual_gradient
   project_dual!(next_dual, problem)
   next_dual_product = problem.constraint_matrix' * next_dual
   return next_dual, next_dual_product
@@ -488,7 +422,6 @@ function update_solution_in_solver_state(
   next_dual::Vector{Float64},
   next_dual_product::Vector{Float64},
 )
-
   solver_state.delta_primal = next_primal - solver_state.current_primal_solution
   solver_state.delta_dual = next_dual - solver_state.current_dual_solution
   solver_state.current_primal_solution = next_primal
@@ -507,12 +440,12 @@ end
 """
 Computes the interaction and movement of the new iterates.
 The movement is used to check if there is a numerical error (movement == 0.0)
-and based on the theory (Theorem 1) the algorithm only moves if interaction / movement < 1
+and based on the theory (Theorem 1) the algorithm only moves if
+interaction / movement <= step_size.
 """
 function compute_interaction_and_movement(
   solver_state::PdhgSolverState,
   problem::QuadraticProgrammingProblem,
-  matrix_information::MatrixInformation,
   next_primal::Vector{Float64},
   next_dual::Vector{Float64},
   next_dual_product::Vector{Float64},
@@ -520,19 +453,13 @@ function compute_interaction_and_movement(
   delta_primal = next_primal .- solver_state.current_primal_solution
   delta_dual = next_dual .- solver_state.current_dual_solution
   primal_objective_interaction =
-    0.5 * (delta_primal' * problem.objective_matrix * delta_primal) -
-    0.5 *
-    weighted_norm(delta_primal, matrix_information.diagonal_objective_matrix)^2
+    0.5 * (delta_primal' * problem.objective_matrix * delta_primal)
   primal_dual_interaction =
     delta_primal' * (next_dual_product .- solver_state.current_dual_product)
   interaction = abs(primal_dual_interaction) + abs(primal_objective_interaction)
   movement =
-    0.5 *
-    weighted_norm(
-      delta_primal,
-      solver_state.primal_norm_params -
-      matrix_information.diagonal_objective_matrix,
-    )^2 + 0.5 * weighted_norm(delta_dual, solver_state.dual_norm_params)^2
+    0.5 * solver_state.primal_weight * norm(delta_primal)^2 +
+    (0.5 / solver_state.primal_weight) * norm(delta_dual)^2
   return interaction, movement
 end
 
@@ -544,7 +471,6 @@ function take_adaptive_step(
   params::PdhgParameters,
   problem::QuadraticProgrammingProblem,
   solver_state::PdhgSolverState,
-  matrix_information::MatrixInformation,
 )
 
   step_size = solver_state.step_size
@@ -554,19 +480,13 @@ function take_adaptive_step(
   while !done
     iter += 1
     solver_state.total_number_iterations += 1
-    solver_state.primal_norm_params, solver_state.dual_norm_params =
-      define_norms(
-        params.diagonal_scaling,
-        matrix_information,
-        step_size,
-        solver_state.primal_weight,
-      )
 
     next_primal = compute_next_primal_solution(
       problem,
       solver_state.current_primal_solution,
       solver_state.current_dual_product,
-      solver_state.primal_norm_params,
+      step_size,
+      solver_state.primal_weight,
     )
 
     next_dual, next_dual_product = compute_next_dual_solution(
@@ -574,12 +494,12 @@ function take_adaptive_step(
       solver_state.current_primal_solution,
       next_primal,
       solver_state.current_dual_solution,
-      solver_state.dual_norm_params,
+      step_size,
+      solver_state.primal_weight,
     )
     interaction, movement = compute_interaction_and_movement(
       solver_state,
       problem,
-      matrix_information,
       next_primal,
       next_dual,
       next_dual_product,
@@ -591,10 +511,14 @@ function take_adaptive_step(
       solver_state.numerical_error = true
       break
     end
-    # The proof of Theorem 1 requires movement >= interaction.
-    solver_state.required_ratio = interaction / movement
+    # The proof of Theorem 1 requires movement / step_size >= interaction.
+    if interaction > 0
+      step_size_limit = movement / interaction
+    else
+      step_size_limit = Inf
+    end
 
-    if solver_state.required_ratio <= 1
+    if step_size <= step_size_limit
       update_solution_in_solver_state(
         solver_state,
         next_primal,
@@ -607,11 +531,11 @@ function take_adaptive_step(
     exponent_one = 0.3
     exponent_two = 0.6
     # Our step sizes are a factor
-    # 1 - (iteration + 1)^(-exponent_one)/required_ratio
+    # 1 - (iteration + 1)^(-exponent_one)
     # smaller than they could be as a margin to reduce rejected steps.
     first_term =
-      (1 - (solver_state.total_number_iterations + 1)^(-exponent_one)) /
-      solver_state.required_ratio * step_size
+      (1 - (solver_state.total_number_iterations + 1)^(-exponent_one)) *
+      step_size_limit
     second_term =
       (1 + (solver_state.total_number_iterations + 1)^(-exponent_two)) *
       step_size
@@ -637,19 +561,13 @@ function take_constant_step_size_step(
   params::PdhgParameters,
   problem::QuadraticProgrammingProblem,
   solver_state::PdhgSolverState,
-  matrix_information::MatrixInformation,
 )
-  solver_state.primal_norm_params, solver_state.dual_norm_params = define_norms(
-    params.diagonal_scaling,
-    matrix_information,
-    solver_state.step_size,
-    solver_state.primal_weight,
-  )
   next_primal = compute_next_primal_solution(
     problem,
     solver_state.current_primal_solution,
     solver_state.current_dual_product,
-    solver_state.primal_norm_params,
+    solver_state.step_size,
+    solver_state.primal_weight,
   )
 
   next_dual, next_dual_product = compute_next_dual_solution(
@@ -657,7 +575,8 @@ function take_constant_step_size_step(
     solver_state.current_primal_solution,
     next_primal,
     solver_state.current_dual_solution,
-    solver_state.dual_norm_params,
+    solver_state.step_size,
+    solver_state.primal_weight,
   )
 
   solver_state.cumulative_kkt_passes += 1
@@ -668,7 +587,6 @@ function take_constant_step_size_step(
     next_dual,
     next_dual_product,
   )
-
 end
 
 """
@@ -720,8 +638,6 @@ function optimize(
     0.0,                 # cumulative_kkt_passes
     0,                   # total_number_iterations
     nothing,             # required_ratio
-    zeros(primal_size),  #primal_norm_params
-    zeros(primal_size),  #dual_norm_params
   )
 
   if params.adaptive_step_size
@@ -740,73 +656,22 @@ function optimize(
     solver_state.cumulative_kkt_passes += number_of_power_iterations
   end
 
-
-
   # Idealized number of KKT passes each time the termination criteria and
   # restart scheme is run. One of these comes from evaluating the gradient at
   # the average solution and evaluating the gradient at the current solution.
   # In practice this number is four.
   KKT_PASSES_PER_TERMINATION_EVALUATION = 2.0
 
-  # With mirror map 1/2 ||x||_X^2 + 1/2 ||y||_Y^2 the theory holds when
-  # [X-Q, -A'; -A, Y] is positive semi-definite. This is automatically
-  # satisfied when we set
-  # X[i,i] = Q[i,i] + step_size * (sum_{j!=i}|Q[i,j]| + 1/primal_weight *
-  # sum_{j}|K[j,i]|) and
-  # Y[j,j] = 1 / step_size / primal_weight / sum_{i}|K[j,i]|. In practice, using
-  # ||.||_2 instead of ||.||_1 to define X and Y often improves the convergence
-  # speed for pdhg.
-  diagonal_objective_matrix = Vector(diag(problem.objective_matrix))
-  if params.diagonal_scaling == "l2"
-    row_norm_objective_matrix =
-      vec((sum(problem.objective_matrix .^ 2, dims = 1)))
-    row_norm_constraint_matrix =
-      vec((sum(problem.constraint_matrix .^ 2, dims = 1)))
-    column_norm_constraint_matrix =
-      vec((sum(problem.constraint_matrix .^ 2, dims = 2)))
-  elseif params.diagonal_scaling == "l1"
-    row_norm_objective_matrix =
-      vec(sum(abs.(problem.objective_matrix), dims = 1))
-    row_norm_constraint_matrix =
-      vec(sum(abs.(problem.constraint_matrix), dims = 1))
-    column_norm_constraint_matrix =
-      vec(sum(abs.(problem.constraint_matrix), dims = 2))
-  elseif params.diagonal_scaling == "off"
-    # diagonal_scaling needs to be "l1" or "l2" for QP.
-    @assert iszero(problem.objective_matrix)
-    row_norm_objective_matrix = ones(primal_size)
-    row_norm_constraint_matrix = ones(primal_size)
-    column_norm_constraint_matrix = ones(dual_size)
-  end
-  matrix_information = MatrixInformation(
-    diagonal_objective_matrix,
-    row_norm_objective_matrix,
-    row_norm_constraint_matrix,
-    column_norm_constraint_matrix,
-  )
-  original_primal_norm_params, original_dual_norm_params = define_norms(
-    params.diagonal_scaling,
-    matrix_information,
-    solver_state.step_size,
-    1.0,
-  )
   solver_state.primal_weight = select_initial_primal_weight(
     problem,
-    original_primal_norm_params,
-    original_dual_norm_params,
+    ones(primal_size),
+    ones(dual_size),
     params.primal_importance,
     params.verbosity,
   )
 
   primal_weight_update_smoothing =
     params.restart_params.primal_weight_update_smoothing
-
-  solver_state.primal_norm_params, solver_state.dual_norm_params = define_norms(
-    params.diagonal_scaling,
-    matrix_information,
-    solver_state.step_size,
-    solver_state.primal_weight,
-  )
 
   iteration_stats = IterationStats[]
   start_time = time()
@@ -876,13 +741,20 @@ function optimize(
       method_specific_stats = current_iteration_stats.method_specific_stats
       method_specific_stats["time_spent_doing_basic_algorithm"] =
         time_spent_doing_basic_algorithm
+
+      primal_norm_params, dual_norm_params = define_norms(
+        primal_size,
+        dual_size,
+        solver_state.step_size,
+        solver_state.primal_weight,
+      )
       update_objective_bound_estimates(
         current_iteration_stats.method_specific_stats,
         problem,
         avg_primal_solution,
         avg_dual_solution,
-        solver_state.primal_norm_params,
-        solver_state.dual_norm_params,
+        primal_norm_params,
+        dual_norm_params,
       )
       if params.record_iteration_stats
         push!(iteration_stats, current_iteration_stats)
@@ -916,8 +788,6 @@ function optimize(
           problem,
           avg_primal_solution,
           avg_dual_solution,
-          original_primal_norm_params,
-          original_dual_norm_params,
           params.verbosity,
           iteration,
           termination_reason,
@@ -940,8 +810,8 @@ function optimize(
         solver_state.current_dual_solution,
         last_restart_info,
         iteration - 1,
-        solver_state.primal_norm_params,
-        solver_state.dual_norm_params,
+        primal_norm_params,
+        dual_norm_params,
         solver_state.primal_weight,
         params.verbosity,
         params.restart_params,
@@ -975,8 +845,6 @@ function optimize(
         iteration,
         solver_state.current_primal_solution,
         solver_state.current_dual_solution,
-        original_primal_norm_params,
-        original_dual_norm_params,
         solver_state.step_size,
         solver_state.required_ratio,
         solver_state.primal_weight,
@@ -984,14 +852,9 @@ function optimize(
     end
 
     if params.adaptive_step_size
-      take_adaptive_step(params, problem, solver_state, matrix_information)
+      take_adaptive_step(params, problem, solver_state)
     else
-      take_constant_step_size_step(
-        params,
-        problem,
-        solver_state,
-        matrix_information,
-      )
+      take_constant_step_size_step(params, problem, solver_state)
     end
 
     time_spent_doing_basic_algorithm +=
