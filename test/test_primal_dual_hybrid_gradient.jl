@@ -292,7 +292,7 @@ end
     @testset "Pock-Chambolle rescaling" begin
       parameters = generate_primal_dual_hybrid_gradient_params(
         pock_chambolle_alpha = 1.0,
-        iteration_limit = 200,
+        iteration_limit = 2000,
         primal_importance = 1.0,
         verbosity = 0,
       )
