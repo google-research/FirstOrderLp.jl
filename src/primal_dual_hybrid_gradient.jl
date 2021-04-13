@@ -113,6 +113,7 @@ overrelaxed and intertial variants in Chambolle and Pock and the algorithm in
 Saddle Point Problems" by Bingsheng He, Feng Ma, Xiaoming Yuan
 (http://www.optimization-online.org/DB_FILE/2016/02/5315.pdf).
 """
+
 struct PdhgParameters
   """
   Number of L_infinity Ruiz rescaling iterations to apply to the constraint
@@ -255,6 +256,80 @@ mutable struct PdhgSolverState
   It is only saved while using Malitsky and Pock linesearch.
   """
   ratio_step_sizes::Union{Float64,Nothing}
+end
+
+"""
+Cached information about the objective and constraint matrices.
+"""
+struct MatrixInformation
+  diagonal_objective_matrix::Vector{Float64}
+  row_norm_objective_matrix::Vector{Float64}
+  row_norm_constraint_matrix::Vector{Float64}
+  column_norm_constraint_matrix::Vector{Float64}
+end
+
+"""
+A PdhgSolverState struct specifies the state of the solver.  It is used to
+pass information among the main solver function and other helper functions.
+"""
+mutable struct PdhgSolverState
+  current_primal_solution::Vector{Float64}
+
+  current_dual_solution::Vector{Float64}
+
+  """
+  Current primal delta. That is current_primal_solution - previous_primal_solution.
+  """
+  delta_primal::Vector{Float64}
+
+  """
+  Current dual delta. That is current_dual_solution - previous_dual_solution.
+  """
+  delta_dual::Vector{Float64}
+
+  """
+  A cache of constraint_matrix' * current_dual_solution.
+  """
+  current_dual_product::Vector{Float64}
+
+  solution_weighted_avg::SolutionWeightedAverage
+
+  step_size::Float64
+
+  primal_weight::Float64
+
+  """
+  True only if the solver was unable to take a step in the previous
+  iterations because of numerical issues, and must terminate on the next step.
+  """
+
+  numerical_error::Bool
+
+  """
+  Number of KKT passes so far.
+  """
+  cumulative_kkt_passes::Float64
+
+  """
+  Total number of iterations. This includes inner iterations.
+  """
+  total_number_iterations::Int64
+
+  """
+  Latest required_ratio. This field is only used with the adaptive step size.
+  The proof of Theorem 1 requires 1 >= required_ratio.
+  """
+  required_ratio::Union{Float64,Nothing}
+
+  """
+  Primal rescaling parameters.
+  """
+  primal_norm_params::Vector{Float64}
+
+  """
+  Dual rescaling parameters.
+  """
+  dual_norm_params::Vector{Float64}
 end
 
 """
@@ -734,10 +809,9 @@ function take_adaptive_step(
       done = true
     end
 
-    # exponent_one = params.step_size_policy_params.exponent_one
-    # exponent_two = params.step_size_policy_params.exponent_two
-    exponent_one = 0.3
-    exponent_two = 0.6
+    exponent_one = params.step_size_policy_params.exponent_one
+    exponent_two = params.step_size_policy_params.exponent_two
+
     # Our step sizes are a factor
     # 1 - (iteration + 1)^(-exponent_one)/required_ratio
     # smaller than they could be as a margin to reduce rejected steps.
