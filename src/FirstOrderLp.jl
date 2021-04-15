@@ -41,6 +41,7 @@ const norm = LinearAlgebra.norm
 const mean = Statistics.mean
 const median = Statistics.median
 const nzrange = SparseArrays.nzrange
+const nnz = SparseArrays.nnz
 const nonzeros = SparseArrays.nonzeros
 const rowvals = SparseArrays.rowvals
 const sparse = SparseArrays.sparse

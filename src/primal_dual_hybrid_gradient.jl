@@ -19,32 +19,51 @@ Parameters of the Malitsky and Pock lineseach algorithm
 struct MalitskyPockStepsizeParameters
 
   """
-  Contraction factor by which the step size is multiply for in the inner
-  loop. Corresponds to mu in the paper.
+  Contraction factor by which the step size is multiplied for in the inner
+  loop. Valid values: interval (0, 1). Corresponds to mu in the paper.
   """
   contraction_factor::Float64
 
   """
   Breaking factor that defines the stopping criteria of the linesearch.
-  Corresponds to delta in the paper.
+  Valid values: interval (0, 1). Corresponds to delta in the paper.
   """
   breaking_factor::Float64
 
   """
   Interpolation coefficient to pick next step size. The next step size can be
   picked within an interval [a, b] (See Step 2 of Algorithm 1). The solver uses
-  a + interpolation_coefficient * (b - a).
+  a + interpolation_coefficient * (b - a). Valid values: interval [0, 1].
   """
   interpolation_coefficient::Float64
 end
 
 """
-Parameters used for the adaptive stepsize policy. For details see
-take_adaptive_step function below.
+Parameters used for the adaptive stepsize policy.
+
+At each inner iteration we update the step size as follows
+Our step sizes are a factor
+ 1 - (iteration + 1)^(-reduction_exponent)
+smaller than they could be as a margin to reduce rejected steps.
+From the first term when we have to reject a step, the step_size
+decreases by a factor of at least 1 - (iteration + 1)^(-reduction_exponent).
+From the second term we increase the step_size by a factor of at most
+1 + (iteration + 1)^(-growth_exponent)
+Therefore if more than order
+(iteration + 1)^(reduction_exponent - growth_exponent)
+fraction of the iterations have a rejected step we overall decrease the
+step_size. When the step_size is below the inverse of the max singular
+value we stop having rejected steps.
 """
 struct AdaptiveStepsizeParams
-  exponent_one::Float64
-  exponent_two::Float64
+  reduction_exponent::Float64
+  growth_exponent::Float64
+end
+
+"""
+Empty placeholder for the parameters of a constant step size policy.
+"""
+struct ConstantStepsizeParams
 end
 
 """
@@ -167,7 +186,7 @@ struct PdhgParameters
   step_size_policy_params::Union{
     MalitskyPockStepsizeParameters,
     AdaptiveStepsizeParams,
-    Nothing,
+    ConstantStepsizeParams,
   }
 end
 
@@ -449,14 +468,14 @@ function compute_next_dual_solution(
   current_dual_solution::Vector{Float64},
   step_size::Float64,
   primal_weight::Float64;
-  damping_coefficient::Float64 = 1.0,
+  extrapolation_coefficient::Float64 = 1.0,
 )
   # The next two lines compute the dual portion:
-  # argmin_y [H*(y) - y' K (next_primal + damping_coefficient*(next_primal - current_primal_solution)
+  # argmin_y [H*(y) - y' K (next_primal + extrapolation_coefficient*(next_primal - current_primal_solution)
   #           + 0.5*norm_Y(y-current_dual_solution)^2]
   dual_gradient = compute_dual_gradient(
     problem,
-    next_primal + damping_coefficient * (next_primal - current_primal_solution),
+    next_primal + extrapolation_coefficient * (next_primal - current_primal_solution),
   )
   next_dual =
     current_dual_solution .+ (primal_weight * step_size) .* dual_gradient
@@ -518,13 +537,18 @@ end
 
 """
 Takes a step using Malitsky and Pock linesearch.
-It modifies the thisd arguement: solver_state.
+It modifies the third arguement: solver_state.
 """
-function take_malitsky_pock_step(
-  params::PdhgParameters,
+function take_step(
+  step_params::MalitskyPockStepsizeParameters,
   problem::QuadraticProgrammingProblem,
   solver_state::PdhgSolverState,
 )
+  if !is_linear_programming_problem(problem)
+    error("Malitsky and Pock linesearch is only supported for linear
+    programming problems.")
+  end
+
   step_size = solver_state.step_size
   ratio_step_sizes = solver_state.ratio_step_sizes
   done = false
@@ -539,14 +563,18 @@ function take_malitsky_pock_step(
   )
   step_size =
     step_size +
-    params.step_size_policy_params.interpolation_coefficient *
+    step_params.interpolation_coefficient *
     (sqrt(1 + ratio_step_sizes) - 1) *
     step_size
-  while !done
+
+  max_iter = 60
+  while !done && iter < max_iter
     iter += 1
     solver_state.total_number_iterations += 1
     ratio_step_sizes = step_size / solver_state.step_size
 
+    # TODO: Get rid of the extra multiply by the constraint matrix (see Remark 1 in
+    # https://arxiv.org/pdf/1608.08883.pdf)
     next_dual, next_dual_product = compute_next_dual_solution(
       problem,
       solver_state.current_primal_solution,
@@ -554,37 +582,50 @@ function take_malitsky_pock_step(
       solver_state.current_dual_solution,
       step_size,
       solver_state.primal_weight;
-      damping_coefficient = ratio_step_sizes,
+      extrapolation_coefficient = ratio_step_sizes,
     )
     delta_dual = next_dual .- solver_state.current_dual_solution
     delta_dual_product = next_dual_product .- solver_state.current_dual_product
+    solver_state.cumulative_kkt_passes += 1
 
+    # The primal weight does not play a role in this condition. As noted in the
+    # paper (See secont paragrah of Section 2 in https://arxiv.org/pdf/1608.08883.pdf)
+    # the coefficient on left-hand-side is equal to
+    # sqrt(<primal_step_size> * <dual_step_size>) = step_size.
+    # where the equality follows since the primal_weight in the primal and dual step
+    # sizes cancel out.
     if step_size * norm(delta_dual_product) <=
-       params.step_size_policy_params.breaking_factor * norm(delta_dual)
-      update_solution_in_solver_state(
-        solver_state,
+      step_params.breaking_factor * norm(delta_dual)
+      # TODO: Implement nonsymmetric weighted average (See Theorem 2 of
+      # https://arxiv.org/pdf/1608.08883.pdf)
+        update_solution_in_solver_state(
+          solver_state,
         next_primal,
         next_dual,
         next_dual_product,
       )
       done = true
     end
-    step_size *= params.step_size_policy_params.contraction_factor
+    step_size *= step_params.contraction_factor
+  end
+  if iter == max_iter && !done
+    solver_state.numerical_error = true
+    return
   end
   solver_state.step_size = step_size
   solver_state.ratio_step_sizes = ratio_step_sizes
+
 end
 
-"""
+  """
 Takes a step using the adaptive step size.
 It modifies the third argument: solver_state.
 """
-function take_adaptive_step(
-  params::PdhgParameters,
-  problem::QuadraticProgrammingProblem,
-  solver_state::PdhgSolverState,
-)
-
+  function take_step(
+    step_params::AdaptiveStepsizeParams,
+    problem::QuadraticProgrammingProblem,
+    solver_state::PdhgSolverState,
+  )
   step_size = solver_state.step_size
   done = false
   iter = 0
@@ -640,27 +681,13 @@ function take_adaptive_step(
       done = true
     end
 
-    exponent_one = params.step_size_policy_params.exponent_one
-    exponent_two = params.step_size_policy_params.exponent_two
 
-    # Our step sizes are a factor
-    # 1 - (iteration + 1)^(-exponent_one)
-    # smaller than they could be as a margin to reduce rejected steps.
     first_term =
-      (1 - (solver_state.total_number_iterations + 1)^(-exponent_one)) *
+      (1 - (solver_state.total_number_iterations + 1)^(-step_params.reduction_exponent)) *
       step_size_limit
     second_term =
-      (1 + (solver_state.total_number_iterations + 1)^(-exponent_two)) *
+      (1 + (solver_state.total_number_iterations + 1)^(-step_params.growth_exponent)) *
       step_size
-    # From the first term when we have to reject a step, the step_size
-    # decreases by a factor of at least 1 - (iteration + 1)^(-exponent_one).
-    # From the second term we increase the step_size by a factor of at most
-    # 1 + (iteration + 1)^(-exponent_two)
-    # Therefore if more than order
-    # (iteration + 1)^(exponent_one - exponent_two)
-    # fraction of the iterations have a rejected step we overall decrease the
-    # step_size. When the step_size is below the inverse of the max singular
-    # value we stop having rejected steps.
     step_size = min(first_term, second_term)
   end
   solver_state.step_size = step_size
@@ -670,8 +697,8 @@ end
 Takes a step with constant step size.
 It modifies the third argument: solver_state.
 """
-function take_constant_step_size_step(
-  params::PdhgParameters,
+function take_step(
+  step_params::ConstantStepsizeParams,
   problem::QuadraticProgrammingProblem,
   solver_state::PdhgSolverState,
 )
@@ -942,6 +969,7 @@ function optimize(
           primal_weight_update_smoothing,
           params.verbosity,
         )
+        solver_state.ratio_step_sizes = 1.0
       end
       if current_iteration_stats.restart_used ==
          RESTART_CHOICE_RESTART_TO_AVERAGE
@@ -969,13 +997,7 @@ function optimize(
       )
     end
 
-    if params.step_size_policy_params isa MalitskyPockStepsizeParameters
-      take_malitsky_pock_step(params, problem, solver_state)
-    elseif params.step_size_policy_params isa AdaptiveStepsizeParams
-      take_adaptive_step(params, problem, solver_state)
-    else
-      take_constant_step_size_step(params, problem, solver_state)
-    end
+    take_step(params.step_size_policy_params, problem, solver_state)
 
     time_spent_doing_basic_algorithm +=
       time() - time_spent_doing_basic_algorithm_checkpoint

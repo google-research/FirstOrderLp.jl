@@ -277,6 +277,14 @@ function linear_programming_problem(
 end
 
 """
+Returns true if, and only if, the given quadratic programming problemis a
+linear programming one.
+"""
+function is_linear_programming_problem(problem::QuadraticProgrammingProblem)
+  return nnz(problem.objective_matrix) == 0
+end
+
+"""
 A ScaledQpProblem struct specifies a original quadratic programming problem,
 a scaled quadratic programming problem, and the scaling vector, which requires
 to satisfy the condition that:

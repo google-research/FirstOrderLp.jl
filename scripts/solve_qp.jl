@@ -405,36 +405,53 @@ function parse_command_line()
     default = false
 
     # The following parameters define the step size policy.
-    "--step-size-policy"
+    "--step_size_policy"
     help =
       "Step size policy used for PDHG. This is ignored for Mirror-prox." *
-      " Supported options {constant, adaptive, malitsky-pock}. Defaults to 'adaptive'. For the constant step size the solver computes a provably correct step size using power iteration."
+      " Supported options {constant, adaptive, malitsky-pock}. Defaults" *
+      " to 'adaptive'. For the constant step size the solver computes a" *
+      " provably correct step size using power iteration."
     arg_type = String
     default = "adaptive"
 
-    "--exponent-one"
-    help = "Adaptive step size rule parameter."
+    "--adaptive_step_size_reduction_exponent"
+    help = "Adaptive step size rule parameter. New step sizes are" *
+      "a factor (1 - iteration^adaptive_step_size_reduction_exponent)" *
+      " smaller than they could be as a margin to reduce rejected steps."
+    ""
     arg_type = Float64
     default = 0.3
 
-    "--exponent-two"
-    help = "Adaptive step size rule parameter."
+    "--adaptive_step_size_growth_exponent"
+    help =
+      "Adaptive step size rule parameter. New step sizes are at most" *
+      "(1+iteration^adaptive_step_size_growth_exponent) * current_step_size."
     arg_type = Float64
     default = 0.6
 
-    "--contraction-factor"
-    help = "Malitsky and Pock step size parameter. Contraction factor by which the step size is multiply for in the inner loop. Corresponds to mu in the paper (https://arxiv.org/pdf/1608.08883.pdf)."
+    "--malitsky_pock_contraction_factor"
+    help = "Malitsky and Pock step size parameter. Contraction factor by " *
+      "which the step size is multiplied for in the inner loop. Corresponds" *
+      "to mu in the paper (https://arxiv.org/pdf/1608.08883.pdf)."
     arg_type = Float64
     default = 0.7
 
-    "--breaking-factor"
-    help = "Malitsky and Pock step size parameter. The breaking factor defines the stopping criteria of the linesearch. It should be a number between (0.0, 1.0). Corresponds to delta in the paper (https://arxiv.org/pdf/1608.08883.pdf)."
+    "--malitsky_pock_breaking_factor"
+    help =
+      "Malitsky and Pock step size parameter. The breaking factor " *
+      "defines the stopping criteria of the linesearch. It should be a " *
+      "number between (0.0, 1.0). Corresponds to delta in the paper " *
+      "(https://arxiv.org/pdf/1608.08883.pdf)."
     arg_type = Float64
     default = 0.99
 
-    "--interpolation-coefficient"
-    help = "Malitsky and Pock step size parameter. Interpolation coefficient to pick next step size. The next step size can be picked within an interval [a, b] (See Step 2 of Algorithm 1 in https://arxiv.org/pdf/1608.08883.pdf). The solver uses
-  a + interpolation_coefficient * (b - a)."
+    "--malitsky_pock_interpolation_coefficient"
+    help =
+      "Malitsky and Pock step size parameter. Interpolation coefficient " *
+      "to pick next step size. The next step size can be picked within an" *
+      " interval [a, b] (See Step 2 of Algorithm 1 in " *
+      "https://arxiv.org/pdf/1608.08883.pdf). The solver uses " *
+      "a + interpolation_coefficient * (b - a)."
     arg_type = Float64
     default = 1.0
 
@@ -531,16 +548,16 @@ function main()
     elseif parsed_args["method"] == "pdhg"
       if parsed_args["step-size-policy"] == "malitsky-pock"
         step_size_policy_params = FirstOrderLp.MalitskyPockStepsizeParameters(
-          parsed_args["contraction_factor"],
-          parsed_args["breaking-factor"],
-          parsed_args["interpolation-coefficient"],
+          parsed_args["malitsky_pock_contraction_factor"],
+          parsed_args["malitsky_pock_breaking_factor"],
+          parsed_args["malitsky_pock_interpolation_coefficient"],
         )
-      elseif parsed_args["step-size-policy"] == "constant"
-        step_size_policy_params = nothing
+      elseif parsed_args["step_size_policy"] == "constant"
+        step_size_policy_params = FirstOrderLp.ConstantStepsizeParams()
       else
         step_size_policy_params = FirstOrderLp.AdaptiveStepsizeParams(
-          parsed_args["exponent-one"],
-          parsed_args["exponent-two"],
+          parsed_args["adaptive_step_size_reduction_exponent"],
+          parsed_args["adaptive_step_size_growth_exponent"],
         )
       end
       parameters = FirstOrderLp.PdhgParameters(

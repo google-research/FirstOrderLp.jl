@@ -39,11 +39,11 @@ function generate_primal_dual_hybrid_gradient_params(;
       1.0,     # interpolation_coefficient
     )
   elseif step_size_policy == "constant"
-    step_size_policy_params = nothing
+    step_size_policy_params = FirstOrderLp.ConstantStepsizeParams()
   else
     step_size_policy_params = FirstOrderLp.AdaptiveStepsizeParams(
-      0.3,     # exponent_one
-      0.6,     # exponent_two
+      0.3,     # reduction_exponent
+      0.6,     # growth_exponent
     )
   end
   restart_params = FirstOrderLp.construct_restart_parameters(
@@ -244,8 +244,7 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 700,
       primal_importance = 1.0,
-      verbosity = 0,
-      primal_weight_update_smoothing = 0.0, # this test breaks if smoothing=0.5
+      primal_weight_update_smoothing = 0.0,
       restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
       step_size_policy = "malitsky-pock",
     )
@@ -261,7 +260,6 @@ end
     parameters = generate_primal_dual_hybrid_gradient_params(
       iteration_limit = 700,
       primal_importance = 1.0,
-      verbosity = 0,
       restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
       step_size_policy = "malitsky-pock",
     )
