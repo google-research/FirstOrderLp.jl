@@ -415,7 +415,8 @@ function parse_command_line()
     default = "adaptive"
 
     "--adaptive_step_size_reduction_exponent"
-    help = "Adaptive step size rule parameter. New step sizes are" *
+    help =
+      "Adaptive step size rule parameter. New step sizes are" *
       "a factor (1 - iteration^adaptive_step_size_reduction_exponent)" *
       " smaller than they could be as a margin to reduce rejected steps."
     ""
@@ -430,7 +431,8 @@ function parse_command_line()
     default = 0.6
 
     "--malitsky_pock_contraction_factor"
-    help = "Malitsky and Pock step size parameter. Contraction factor by " *
+    help =
+      "Malitsky and Pock step size parameter. Contraction factor by " *
       "which the step size is multiplied for in the inner loop. Corresponds" *
       "to mu in the paper (https://arxiv.org/pdf/1608.08883.pdf)."
     arg_type = Float64

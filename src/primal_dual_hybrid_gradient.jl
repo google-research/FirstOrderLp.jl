@@ -63,8 +63,7 @@ end
 """
 Empty placeholder for the parameters of a constant step size policy.
 """
-struct ConstantStepsizeParams
-end
+struct ConstantStepsizeParams end
 
 """
 A PdhgParameters struct specifies the parameters for solving the saddle
@@ -475,7 +474,8 @@ function compute_next_dual_solution(
   #           + 0.5*norm_Y(y-current_dual_solution)^2]
   dual_gradient = compute_dual_gradient(
     problem,
-    next_primal + extrapolation_coefficient * (next_primal - current_primal_solution),
+    next_primal +
+    extrapolation_coefficient * (next_primal - current_primal_solution),
   )
   next_dual =
     current_dual_solution .+ (primal_weight * step_size) .* dual_gradient
@@ -595,11 +595,11 @@ function take_step(
     # where the equality follows since the primal_weight in the primal and dual step
     # sizes cancel out.
     if step_size * norm(delta_dual_product) <=
-      step_params.breaking_factor * norm(delta_dual)
+       step_params.breaking_factor * norm(delta_dual)
       # TODO: Implement nonsymmetric weighted average (See Theorem 2 of
       # https://arxiv.org/pdf/1608.08883.pdf)
-        update_solution_in_solver_state(
-          solver_state,
+      update_solution_in_solver_state(
+        solver_state,
         next_primal,
         next_dual,
         next_dual_product,
@@ -617,15 +617,15 @@ function take_step(
 
 end
 
-  """
+"""
 Takes a step using the adaptive step size.
 It modifies the third argument: solver_state.
 """
-  function take_step(
-    step_params::AdaptiveStepsizeParams,
-    problem::QuadraticProgrammingProblem,
-    solver_state::PdhgSolverState,
-  )
+function take_step(
+  step_params::AdaptiveStepsizeParams,
+  problem::QuadraticProgrammingProblem,
+  solver_state::PdhgSolverState,
+)
   step_size = solver_state.step_size
   done = false
   iter = 0
@@ -683,11 +683,19 @@ It modifies the third argument: solver_state.
 
 
     first_term =
-      (1 - (solver_state.total_number_iterations + 1)^(-step_params.reduction_exponent)) *
-      step_size_limit
+      (
+        1 -
+        (
+          solver_state.total_number_iterations + 1
+        )^(-step_params.reduction_exponent)
+      ) * step_size_limit
     second_term =
-      (1 + (solver_state.total_number_iterations + 1)^(-step_params.growth_exponent)) *
-      step_size
+      (
+        1 +
+        (
+          solver_state.total_number_iterations + 1
+        )^(-step_params.growth_exponent)
+      ) * step_size
     step_size = min(first_term, second_term)
   end
   solver_state.step_size = step_size
