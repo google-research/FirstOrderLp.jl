@@ -419,7 +419,6 @@ function parse_command_line()
       "Adaptive step size rule parameter. New step sizes are" *
       "a factor (1 - iteration^adaptive_step_size_reduction_exponent)" *
       " smaller than they could be as a margin to reduce rejected steps."
-    ""
     arg_type = Float64
     default = 0.3
 
@@ -548,7 +547,7 @@ function main()
         restart_params,
       )
     elseif parsed_args["method"] == "pdhg"
-      if parsed_args["step-size-policy"] == "malitsky-pock"
+      if parsed_args["step_size_policy"] == "malitsky-pock"
         step_size_policy_params = FirstOrderLp.MalitskyPockStepsizeParameters(
           parsed_args["malitsky_pock_contraction_factor"],
           parsed_args["malitsky_pock_breaking_factor"],
