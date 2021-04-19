@@ -155,7 +155,7 @@ struct PdhgParameters
   verbosity::Int64
 
   """
-  Whether to record an IterationStats proto.
+  Whether to record an IterationStats object.
   """
   record_iteration_stats::Bool
 

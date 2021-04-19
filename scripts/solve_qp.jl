@@ -337,7 +337,7 @@ function parse_command_line()
     "--record_iteration_stats"
     help =
       "Whether we record iterations stats. If true then record an " *
-      "IterationStats proto with frequency (in iterations) " *
+      "IterationStats object with frequency (in iterations) " *
       "equal to termination_evaluation_frequency."
     arg_type = Bool
     default = true
@@ -350,9 +350,9 @@ function parse_command_line()
     default = 40
 
     # The following parameters specify termination criteria.
-    # These correspond to the fields in the TerminationCriteria proto.
-    # If the arguments are not provided, the default values are grabbed from the
-    # TerminationCriteria proto.
+    # These correspond to the fields in the TerminationCriteria struct.
+    # If the arguments are not provided, the default values are grabbed from
+    # construct_termination_criteria in termination.jl.
     "--optimality_norm"
     help =
       "The norm for the optimality criteria. Supported options: {l2, " *
