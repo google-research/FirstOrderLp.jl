@@ -587,6 +587,8 @@ function take_step(
     )
     delta_dual = next_dual .- solver_state.current_dual_solution
     delta_dual_product = next_dual_product .- solver_state.current_dual_product
+    # This is the ideal count. The current version of the code incurs in 1.0 kkt
+    # pass. See TODO before the next_dual update above.
     solver_state.cumulative_kkt_passes += 0.5
 
     # The primal weight does not play a role in this condition. As noted in the

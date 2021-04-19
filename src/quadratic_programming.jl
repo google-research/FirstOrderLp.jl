@@ -277,7 +277,7 @@ function linear_programming_problem(
 end
 
 """
-  Returns true if and only if the objective matrix is zero.
+Returns true if and only if the objective matrix is zero.
 """
 function is_linear_programming_problem(problem::QuadraticProgrammingProblem)
   return nnz(problem.objective_matrix) == 0
