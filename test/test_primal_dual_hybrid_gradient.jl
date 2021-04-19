@@ -30,8 +30,22 @@ function generate_primal_dual_hybrid_gradient_params(;
   termination_evaluation_frequency = 5,
   use_approximate_localized_duality_gap = false,
   restart_to_current_metric = FirstOrderLp.GAP_OVER_DISTANCE_SQUARED,
-  adaptive_step_size = true,
+  step_size_policy = "adaptive",
 )
+  if step_size_policy == "malitsky-pock"
+    step_size_policy_params = FirstOrderLp.MalitskyPockStepsizeParameters(
+      0.7,     # contraction_factor
+      0.99,    # breaking_factor
+      1.0,     # interpolation_coefficient
+    )
+  elseif step_size_policy == "constant"
+    step_size_policy_params = FirstOrderLp.ConstantStepsizeParams()
+  else
+    step_size_policy_params = FirstOrderLp.AdaptiveStepsizeParams(
+      0.3,     # reduction_exponent
+      0.6,     # growth_exponent
+    )
+  end
   restart_params = FirstOrderLp.construct_restart_parameters(
     restart_scheme,
     restart_to_current_metric,
@@ -47,12 +61,12 @@ function generate_primal_dual_hybrid_gradient_params(;
     l2_norm_rescaling,
     pock_chambolle_alpha,
     primal_importance,
-    adaptive_step_size,
     verbosity,
     record_iteration_stats,
     termination_evaluation_frequency,
     terminate_on_iteration_limit(iteration_limit),
     restart_params,
+    step_size_policy_params,
   )
   return parameters
 end
@@ -137,7 +151,7 @@ end
       verbosity = 0,
       primal_weight_update_smoothing = 0.0, # this test breaks if smoothing=0.5
       restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
-      adaptive_step_size = false,
+      step_size_policy = "constant",
     )
 
     problem = example_lp()
@@ -224,6 +238,37 @@ end
     parameters.termination_criteria.eps_optimal_absolute = 1e-8
     output = FirstOrderLp.optimize(parameters, problem)
     @test output.termination_reason == FirstOrderLp.TERMINATION_REASON_OPTIMAL
+  end
+
+  @testset "Malitsky and Pock linesearch, no smoothing" begin
+    parameters = generate_primal_dual_hybrid_gradient_params(
+      iteration_limit = 700,
+      primal_importance = 1.0,
+      primal_weight_update_smoothing = 0.0,
+      restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
+      step_size_policy = "malitsky-pock",
+    )
+
+    problem = example_lp()
+    output = FirstOrderLp.optimize(parameters, problem)
+    @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-9
+    @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-9
+
+  end
+
+  @testset "Malitsky and Pock linesearch, smoothing" begin
+    parameters = generate_primal_dual_hybrid_gradient_params(
+      iteration_limit = 700,
+      primal_importance = 1.0,
+      restart_scheme = FirstOrderLp.ADAPTIVE_NORMALIZED,
+      step_size_policy = "malitsky-pock",
+    )
+
+    problem = example_lp()
+    output = FirstOrderLp.optimize(parameters, problem)
+    @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-9
+    @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-9
+
   end
 
   @testset "Quadratic Programming 1" begin
