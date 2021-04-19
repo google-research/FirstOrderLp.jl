@@ -178,9 +178,7 @@ struct PdhgParameters
 
   """
   Parameters of the step size policy. There are three step size policies
-  implemented: Adaptive, Malitsky and Pock, and constant step size. If
-  'nothing', the solver uses a constant step size computed using power
-  iteration.
+  implemented: Adaptive, Malitsky and Pock, and constant step size.
   """
   step_size_policy_params::Union{
     MalitskyPockStepsizeParameters,
@@ -545,8 +543,8 @@ function take_step(
   solver_state::PdhgSolverState,
 )
   if !is_linear_programming_problem(problem)
-    error("Malitsky and Pock linesearch is only supported for linear
-    programming problems.")
+    error("Malitsky and Pock linesearch is only supported for linear" *
+          " programming problems.")
   end
 
   step_size = solver_state.step_size
@@ -561,6 +559,7 @@ function take_step(
     step_size,
     solver_state.primal_weight,
   )
+  solver_state.cumulative_kkt_passes += 0.5
   step_size =
     step_size +
     step_params.interpolation_coefficient *
@@ -586,7 +585,7 @@ function take_step(
     )
     delta_dual = next_dual .- solver_state.current_dual_solution
     delta_dual_product = next_dual_product .- solver_state.current_dual_product
-    solver_state.cumulative_kkt_passes += 1
+    solver_state.cumulative_kkt_passes += 0.5
 
     # The primal weight does not play a role in this condition. As noted in the
     # paper (See secont paragrah of Section 2 in https://arxiv.org/pdf/1608.08883.pdf)
@@ -595,7 +594,7 @@ function take_step(
     # where the equality follows since the primal_weight in the primal and dual step
     # sizes cancel out.
     if step_size * norm(delta_dual_product) <=
-       step_params.breaking_factor * norm(delta_dual)
+      step_params.breaking_factor * norm(delta_dual)
       # TODO: Implement nonsymmetric weighted average (See Theorem 2 of
       # https://arxiv.org/pdf/1608.08883.pdf)
       update_solution_in_solver_state(
