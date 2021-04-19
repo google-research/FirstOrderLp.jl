@@ -200,9 +200,10 @@ function solve_instance_and_output(
         eps,  # eps_optimal_relative
         0.0,  # step_size
         0.0,  # primal_weight
-        FirstOrderLp.POINT_TYPE_AVERAGE_ITERATE,
+        FirstOrderLp.POINT_TYPE_CURRENT_ITERATE,
       )
       log.solution_stats = last_iteration_stats
+      log.solution_type = FirstOrderLp.POINT_TYPE_CURRENT_ITERATE
 
       # Complete iteration stats are not available, so we write only the
       # summary.
