@@ -543,8 +543,10 @@ function take_step(
   solver_state::PdhgSolverState,
 )
   if !is_linear_programming_problem(problem)
-    error("Malitsky and Pock linesearch is only supported for linear" *
-          " programming problems.")
+    error(
+      "Malitsky and Pock linesearch is only supported for linear" *
+      " programming problems.",
+    )
   end
 
   step_size = solver_state.step_size
@@ -594,7 +596,7 @@ function take_step(
     # where the equality follows since the primal_weight in the primal and dual step
     # sizes cancel out.
     if step_size * norm(delta_dual_product) <=
-      step_params.breaking_factor * norm(delta_dual)
+       step_params.breaking_factor * norm(delta_dual)
       # TODO: Implement nonsymmetric weighted average (See Theorem 2 of
       # https://arxiv.org/pdf/1608.08883.pdf)
       update_solution_in_solver_state(
