@@ -31,7 +31,7 @@ struct SaddlePointOutput
   dual_solution::Vector{Float64}
 
   """
-  One of the possible values from the TerminationReason proto enum.
+  One of the possible values from the TerminationReason enum.
   """
   termination_reason::TerminationReason
 

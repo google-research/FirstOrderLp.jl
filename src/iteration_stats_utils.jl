@@ -222,7 +222,7 @@ end
 
 
 """
-Returns a `ConvergenceInformation` proto given a `QuadraticProgrammingProblem`
+Returns a `ConvergenceInformation` object given a `QuadraticProgrammingProblem`
 with given primal and dual vectors.
 """
 function compute_convergence_information(
@@ -280,7 +280,7 @@ function compute_convergence_information(
 end
 
 """
-Returns an `InfeasibilityInformation` proto given a
+Returns an `InfeasibilityInformation` object given a
 `QuadraticProgrammingProblem` and estimates for the primal and dual rays.
 The rays do not need to be pre-scaled to have Inf-norm equal to 1.0.
 """
@@ -349,9 +349,9 @@ function compute_infeasibility_information(
 end
 
 """
-Returns a `IterationStats` proto given a `QuadraticProgrammingProblem`,
+Returns a `IterationStats` object given a `QuadraticProgrammingProblem`,
 primal and dual vectors, estimates for primal and dual rays, and other
-iteration statistics corresponding to the fields in the proto.
+iteration statistics corresponding to the fields in the struct.
 """
 function compute_iteration_stats(
   problem::QuadraticProgrammingProblem,
