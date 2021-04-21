@@ -25,6 +25,8 @@ function drop_integrality(input_file, output_file)
   vars .= unsafe_wrap(Array, raw_vars, num_vars)
 
   for var in vars
+    # This is an output of chgVarType indicating whether the change makes the
+    # problem infeasible. We ignore this value.
     infeasible = Ref{SCIP.SCIP_Bool}()
     SCIP.@SC SCIP.SCIPchgVarType(
       scip[],
@@ -42,6 +44,6 @@ function drop_integrality(input_file, output_file)
 end
 
 if length(ARGS) != 2
-  @error "Usage: drop_integrality.jl [input file] [output file]"
+  @error "Usage: drop_integrality.jl input_file output_file"
 end
 drop_integrality(ARGS[1], ARGS[2])

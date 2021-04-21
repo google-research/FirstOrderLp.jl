@@ -14,7 +14,7 @@ FirstOrderLp.
 `preprocess.sh` has the following argument structure:
 
 ```sh
-$ ./preprocess.sh [path to miplib collection] [output directory] [path to papilo binary]
+$ ./preprocess.sh path_to_miplib output_directory path_to_papilo_binary
 ```
 
 For example:
