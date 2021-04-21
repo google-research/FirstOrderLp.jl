@@ -11,7 +11,7 @@ publications and is not a "solver" per se.
 
 ## One-time setup
 
-Install Julia 1.5.2 or later. From the root directory of the repository, run:
+Install Julia 1.6.0 or later. From the root directory of the repository, run:
 
 ```shell
 $ julia --project=scripts -e 'import Pkg; Pkg.instantiate()'
