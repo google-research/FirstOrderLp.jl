@@ -1,27 +1,28 @@
 #!/bin/bash
 #
-# Generates a presolved version of a filtered selection of the MIPLIB 2017
+# Generates a presolved version of a filtered selection of a benchmark
 # collection.
 
-if [[ "$#" -ne 3 ]]; then
-    echo "Usage: preprocess.sh path_to_miplib output_directory path_to_papilo_binary"
-    exit 1
-fi
-
-if [[ ! -f miplib2017_instance_list ]]; then
-    echo "Unable to find miplib2017_instance_list in the current directory."
+if [[ "$#" -ne 4 ]]; then
+    echo "Usage: preprocess.sh path_to_benchmark benchmark_instance_list" \
+        "output_directory path_to_papilo_binary"
     exit 1
 fi
 
 JULIA="${JULIA:-julia}"
 
-# Directory containing Miplib 2017 collection instances.
-miplib_path="$1"
-output_directory="$2"
-papilo_binary="$3"
+benchmark_path="$1"
+benchmark_instance_list="$2"
+output_directory="$3"
+papilo_binary="$4"
 
-if [[ ! -d "${miplib_path}" ]]; then
-    echo "miplib directory does not exist: ${miplib_path}"
+if [[ ! -d "${benchmark_path}" ]]; then
+    echo "miplib directory does not exist: ${benchmark_path}"
+    exit 1
+fi
+
+if [[ ! -f "${benchmark_instance_list}" ]]; then
+    echo "Unable to read benchmark instance list: ${benchmark_instance_list}"
     exit 1
 fi
 
@@ -30,7 +31,7 @@ if [[ ! -x "${papilo_binary}" ]]; then
     exit 1
 fi
 
-mkdir -p "${output_directory}"
+mkdir -p "${output_directory}" || exit 1
 
 gunzip_scratch_dir="$(mktemp -d -p "${output_directory}")"
 relaxation_scratch_dir="$(mktemp -d -p "${output_directory}")"
@@ -42,7 +43,7 @@ while read instance_name; do
     fi
     echo "Processing ${instance_name}"
     
-    gunzip -c "${miplib_path}/${instance_name}.mps.gz" \
+    gunzip -c "${benchmark_path}/${instance_name}.mps.gz" \
         >"${gunzip_scratch_dir}/${instance_name}.mps"
     "${JULIA}" --project=. drop_integrality.jl \
         "${gunzip_scratch_dir}/${instance_name}.mps" \
@@ -70,6 +71,6 @@ while read instance_name; do
     gzip "${output_directory}/${instance_name}.postsolve"
     rm "${gunzip_scratch_dir}/${instance_name}.mps"
     rm "${relaxation_scratch_dir}/${instance_name}.mps"
-done <miplib2017_instance_list
+done < "${benchmark_instance_list}"
 
 rm -r "${gunzip_scratch_dir}" "${relaxation_scratch_dir}"
