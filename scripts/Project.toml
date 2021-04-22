@@ -2,6 +2,7 @@
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 FirstOrderLp = "29002642-da4a-11e8-3a94-39bc61281718"
 GZip = "92fee26a-97fe-5a0c-ad85-20a5f3185b63"
+HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"

@@ -44,10 +44,11 @@ $ julia --project=scripts scripts/solve_qp.jl \
 --method pdhg --output_dir /tmp/first_order_lp_solve
 ```
 
-### `solve_lp_scs.jl`
+### `solve_lp_external.jl`
 
-This script provides an interface similar to `solve_qp` but for calling SCS.
-Note that SCS does not support quadratic objectives.
+This script provides an interface similar to `solve_qp` but for calling
+external solvers for baselines. This script does not support quadratic
+objectives.
 
 To solve a test instance with SCS's indirect mode:
 

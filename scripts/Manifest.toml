@@ -136,6 +136,18 @@ git-tree-sha1 = "c9f380c76d8aaa1fa7ea9cf97bddbc0d5b15adc2"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 version = "0.9.5"
 
+[[HiGHS]]
+deps = ["HiGHS_jll", "MathOptInterface", "SparseArrays"]
+git-tree-sha1 = "def3e54c40416a71a22d44f48c34490cf91b3b8e"
+uuid = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
+version = "0.1.2"
+
+[[HiGHS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "4b73693569fb7d780b56c1ddcea9001f0a165769"
+uuid = "8fd58aa0-07eb-5a78-9b36-339c94fd15ea"
+version = "0.2.3+0"
+
 [[IniFile]]
 deps = ["Test"]
 git-tree-sha1 = "098e4d2c533924c921f9f9847274f2ad89e018b8"
