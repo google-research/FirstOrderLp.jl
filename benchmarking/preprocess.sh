@@ -17,7 +17,7 @@ output_directory="$3"
 papilo_binary="$4"
 
 if [[ ! -d "${benchmark_path}" ]]; then
-    echo "miplib directory does not exist: ${benchmark_path}"
+    echo "benchmark path does not exist: ${benchmark_path}"
     exit 1
 fi
 

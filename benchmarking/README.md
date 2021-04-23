@@ -26,7 +26,7 @@ $ ./preprocess.sh ~/miplib2017_collection ./miplib2017_instance_list \
     ~/miplib2017_preprocessed ~/PaPILO/build/bin/papilo
 ```
 
-## Filtered and preprocessed Mittelmann benchmark dataset
+## Preprocessed Mittelmann benchmark dataset
 
 This benchmark contains the union of the instances from Hans Mittelmann's 
 [Benchmark of Simplex LP Solvers](http://plato.asu.edu/ftp/lpsimp.html),
