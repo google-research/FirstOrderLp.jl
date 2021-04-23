@@ -21,6 +21,7 @@ import SparseArrays
 
 # Third-party Julia packages.
 import ArgParse
+import HiGHS
 import JSON3
 import JuMP
 import MathOptInterface
@@ -98,14 +99,14 @@ function extract_termination_reason(jump_model)
 end
 
 """
-Solves a linear programming problem using SCS. Takes a path to an instance. The
-instance must have the extension .mps, or .mps.gz. Creates
+Solves a linear programming problem using the provided solver. Takes a path to
+an instance. The instance must have the extension .mps, or .mps.gz. Creates
 `instance_summary.json` with a SolveLog serialized in JSON format,
 `instance_primal.txt` with the primal solution, `instance_dual.txt` with the
 dual solution, and `instance_stderr.txt`, `instance_stdout.txt`.
 """
 function solve_instance_and_output(
-  parameters::Vector,
+  optimizer_with_attributes::MathOptInterface.OptimizerWithAttributes,
   output_dir::String,
   instance_path::String,
   print_stdout::Bool,
@@ -124,14 +125,7 @@ function solve_instance_and_output(
 
   jump_model, jump_variables, jump_constraints = instance_to_model(lp)
 
-  JuMP.set_optimizer(jump_model, SCS.Optimizer)
-  eps = 0.0
-  for (param_name, value) in parameters
-    MOI.set(jump_model, MOI.RawParameter(param_name), value)
-    if param_name == "eps"
-      eps = value
-    end
-  end
+  JuMP.set_optimizer(jump_model, optimizer_with_attributes)
 
   instance_name =
     replace(replace(basename(instance_path), ".mps.gz" => ""), ".mps" => "")
@@ -168,24 +162,29 @@ function solve_instance_and_output(
       log.command_line_invocation = join([PROGRAM_FILE; ARGS...], " ")
       log.termination_reason = extract_termination_reason(jump_model)
       log.termination_string = JuMP.raw_status(jump_model)
+      log.solve_time_sec = running_time
       cumulative_kkt_matrix_passes = NaN
-      log.iteration_count = Int32(MOI.get(jump_model, SCS.ADMMIterations()))
-      # We read the log to extract "avg # CG iterations". This is printed only
-      # in SCS's indirect mode.
-      for line in split(solve_log, '\n')
-        if occursin("avg # CG iterations", line)
-          avg_cg_iters = parse(Float64, rstrip(split(line)[6], ','))
-          # This formula was given by bodonoghue@.
-          cumulative_kkt_matrix_passes =
-            log.iteration_count + log.iteration_count * avg_cg_iters
-          break
+      if optimizer_with_attributes.optimizer_constructor == SCS.Optimizer
+        log.iteration_count = Int32(MOI.get(jump_model, SCS.ADMMIterations()))
+        # We read the log to extract "avg # CG iterations". This is printed only
+        # in SCS's indirect mode.
+        for line in split(solve_log, '\n')
+          if occursin("avg # CG iterations", line)
+            avg_cg_iters = parse(Float64, rstrip(split(line)[6], ','))
+            # This formula was given by Brendan O'Donoghue.
+            cumulative_kkt_matrix_passes =
+              log.iteration_count + log.iteration_count * avg_cg_iters
+            break
+          end
         end
       end
-      log.solve_time_sec = running_time
+
 
       primal_sol = JuMP.value.(jump_variables)
       dual_sol = JuMP.dual.(jump_constraints)
 
+      # eps_optimal_absolute and eps_optimal_relative are set to 1 because
+      # the result depends only on their ratio, which is fixed in our experiments.
       last_iteration_stats = FirstOrderLp.compute_iteration_stats(
         lp,
         FirstOrderLp.cached_quadratic_program_info(lp),
@@ -196,8 +195,8 @@ function solve_instance_and_output(
         log.iteration_count,
         cumulative_kkt_matrix_passes,
         running_time,
-        eps,  # eps_optimal_absolute
-        eps,  # eps_optimal_relative
+        1.0,  # eps_optimal_absolute
+        1.0,  # eps_optimal_relative
         0.0,  # step_size
         0.0,  # primal_weight
         FirstOrderLp.POINT_TYPE_CURRENT_ITERATE,
@@ -244,7 +243,9 @@ function parse_command_line()
 
   ArgParse.@add_arg_table! arg_parse begin
     "--solver"
-    help = "The solver to use. May be 'scs-direct' or 'scs-indirect'."
+    help =
+      "The solver to use. May be 'scs-direct', 'scs-indirect', " *
+      "'highs-simplex', or 'highs-ipm'."
     arg_type = String
     required = true
 
@@ -268,15 +269,18 @@ function parse_command_line()
     arg_type = Bool
     default = true
 
+    "--tolerance"
+    help =
+      "For SCS, the value to set for 'eps', a convergence tolerance." *
+      "For HiGHS, the primal and dual feasibility tolerance. NOTE:" *
+      "Tolerances are interpreted differently by each solver!"
+    arg_type = Float64
+    required = true
+
     # SCS parameters are defined at
     # https://github.com/cvxgrp/scs/blob/e5bb794ac014b7a86d127ac03651d2c8a12ecba8/include/scs.h#L44
     # with default values at
     # https://github.com/cvxgrp/scs/blob/e5bb794ac014b7a86d127ac03651d2c8a12ecba8/include/glbopts.h#L30.
-    "--scs-eps"
-    help = "For SCS only, the value to set for the 'eps' tolerance."
-    arg_type = Float64
-    default = 1e-5
-
     "--scs-normalize"
     help = "For SCS only, apply SCS's internal rescaling heuristic."
     arg_type = Bool
@@ -300,7 +304,7 @@ function parse_command_line()
     "--iteration_limit"
     help = "Maximum number of iterations to run."
     arg_type = Int64
-    default = 10000
+    default = typemax(Int64)
 
     # NOTE: This flag is required for compatibility with experiment scripts.
     "--redirect_stdio"
@@ -320,6 +324,8 @@ function main()
     error("The current implementation doesn't support redirect_stdio=false.")
   end
 
+  iteration_limit = parsed_args["iteration_limit"]
+
   if parsed_args["solver"] == "scs-indirect" ||
      parsed_args["solver"] == "scs-direct"
     parameters = []
@@ -335,8 +341,10 @@ function main()
       push!(parameters, ("normalize", 0))
     end
     push!(parameters, ("scale", parsed_args["scs-scale"]))
-    push!(parameters, ("eps", parsed_args["scs-eps"]))
-    push!(parameters, ("max_iters", parsed_args["iteration_limit"]))
+    push!(parameters, ("eps", parsed_args["tolerance"]))
+    if iteration_limit != typemax(Int64)
+      push!(parameters, ("max_iters", iteration_limit))
+    end
     if parsed_args["verbose"]
       push!(parameters, ("verbose", 1))
     else
@@ -348,12 +356,45 @@ function main()
     else
       push!(parameters, ("linear_solver", SCS.DirectSolver))
     end
+    optimizer_with_attributes = MathOptInterface.OptimizerWithAttributes(
+      SCS.Optimizer,
+      [MOI.RawParameter(p) => v for (p, v) in parameters],
+    )
+  elseif parsed_args["solver"] == "highs-simplex" ||
+         parsed_args["solver"] == "highs-ipm"
+    # See https://www.maths.ed.ac.uk/hall/HiGHS/HighsOptions.set for the
+    # possible options.
+    parameters = []
+    if parsed_args["solver"] == "highs-simplex"
+      push!(parameters, ("solver", "simplex"))
+      if iteration_limit != typemax(Int64)
+        push!(parameters, ("simplex_iteration_limit", iteration_limit))
+      end
+    else
+      push!(parameters, ("solver", "ipm"))
+      if iteration_limit != typemax(Int64)
+        push!(parameters, ("ipm_iteration_limit", iteration_limit))
+      end
+      # TODO: Consider disabling crossover using the "run_crossover" option.
+      # This option appears to be incompatible with presolving. See:
+      # https://github.com/ERGO-Code/HiGHS/blob/cfe064e60fdca9dc8008fd956fff04d7b562e210/src/lp_data/Highs.cpp#L507
+    end
+    push!(parameters, ("parallel", "off"))
+    push!(
+      parameters,
+      ("primal_feasibility_tolerance", parsed_args["tolerance"]),
+    )
+    push!(parameters, ("dual_feasibility_tolerance", parsed_args["tolerance"]))
+    optimizer_with_attributes = MathOptInterface.OptimizerWithAttributes(
+      HiGHS.Optimizer,
+      [MOI.RawParameter(p) => v for (p, v) in parameters],
+    )
   else
     error("Unrecognized solver $(parsed_args["solver"]).")
   end
 
   solve_instance_and_output(
-    parameters,
+    optimizer_with_attributes,
     parsed_args["output_dir"],
     parsed_args["instance_path"],
     parsed_args["print_stdout"],
