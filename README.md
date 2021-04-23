@@ -63,8 +63,7 @@ To solve a test with HiGHS's interior-point mode:
 ```shell
 $ julia --project=scripts scripts/solve_lp_external.jl \
 --instance_path test/trivial_lp_model.mps --solver highs-ipm \
---tolerance 1e-7
---output_dir /tmp/highs_solve
+--tolerance 1e-7 --output_dir /tmp/highs_solve
 ```
 
 ## Loading the module
