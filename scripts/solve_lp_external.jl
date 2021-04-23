@@ -269,20 +269,18 @@ function parse_command_line()
     arg_type = Bool
     default = true
 
-    "--highs-tolerance"
-    help = "For HiGHS only, the primal and dual feasiblity tolerance."
+    "--tolerance"
+    help =
+      "For SCS, the value to set for 'eps', a convergence tolerance." *
+      "For HiGHS, the primal and dual feasibility tolerance. NOTE:" *
+      "Tolerances are interpreted differently by each solver!"
     arg_type = Float64
-    default = 1e-7
+    required = true
 
     # SCS parameters are defined at
     # https://github.com/cvxgrp/scs/blob/e5bb794ac014b7a86d127ac03651d2c8a12ecba8/include/scs.h#L44
     # with default values at
     # https://github.com/cvxgrp/scs/blob/e5bb794ac014b7a86d127ac03651d2c8a12ecba8/include/glbopts.h#L30.
-    "--scs-eps"
-    help = "For SCS only, the value to set for the 'eps' tolerance."
-    arg_type = Float64
-    default = 1e-5
-
     "--scs-normalize"
     help = "For SCS only, apply SCS's internal rescaling heuristic."
     arg_type = Bool
@@ -343,7 +341,7 @@ function main()
       push!(parameters, ("normalize", 0))
     end
     push!(parameters, ("scale", parsed_args["scs-scale"]))
-    push!(parameters, ("eps", parsed_args["scs-eps"]))
+    push!(parameters, ("eps", parsed_args["tolerance"]))
     if iteration_limit != typemax(Int64)
       push!(parameters, ("max_iters", iteration_limit))
     end
@@ -384,12 +382,9 @@ function main()
     push!(parameters, ("parallel", "off"))
     push!(
       parameters,
-      ("primal_feasibility_tolerance", parsed_args["highs-tolerance"]),
+      ("primal_feasibility_tolerance", parsed_args["tolerance"]),
     )
-    push!(
-      parameters,
-      ("dual_feasibility_tolerance", parsed_args["highs-tolerance"]),
-    )
+    push!(parameters, ("dual_feasibility_tolerance", parsed_args["tolerance"]))
     optimizer_with_attributes = MathOptInterface.OptimizerWithAttributes(
       HiGHS.Optimizer,
       [MOI.RawParameter(p) => v for (p, v) in parameters],

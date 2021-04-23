@@ -53,9 +53,18 @@ objectives.
 To solve a test instance with SCS's indirect mode:
 
 ```shell
-$ julia --project=scripts scripts/solve_lp_scs.jl \
+$ julia --project=scripts scripts/solve_lp_external.jl \
 --instance_path test/trivial_lp_model.mps --iteration_limit 5000 \
---solver scs-indirect --output_dir /tmp/scs_solve
+--solver scs-indirect --tolerance 1e-7 --output_dir /tmp/scs_solve
+```
+
+To solve a test with HiGHS's interior-point mode:
+
+```shell
+$ julia --project=scripts scripts/solve_lp_external.jl \
+--instance_path test/trivial_lp_model.mps --solver highs-ipm \
+--tolerance 1e-7
+--output_dir /tmp/highs_solve
 ```
 
 ## Loading the module

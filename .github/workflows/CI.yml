@@ -39,6 +39,6 @@ jobs:
       - name: "solve_qp.jl test"
         run: julia --project=$GITHUB_WORKSPACE/scripts $GITHUB_WORKSPACE/scripts/solve_qp.jl --instance_path test/trivial_lp_model.mps --method pdhg --output_dir /tmp
       - name: "solve_lp_external.jl test (SCS)"
-        run: julia --project=$GITHUB_WORKSPACE/scripts $GITHUB_WORKSPACE/scripts/solve_lp_external.jl --instance_path test/trivial_lp_model.mps --solver scs-indirect --output_dir /tmp
+        run: julia --project=$GITHUB_WORKSPACE/scripts $GITHUB_WORKSPACE/scripts/solve_lp_external.jl --instance_path test/trivial_lp_model.mps --solver scs-indirect --tolerance 1e-7 --output_dir /tmp
       - name: "solve_lp_external.jl test (HiGHS)"
-        run: julia --project=$GITHUB_WORKSPACE/scripts $GITHUB_WORKSPACE/scripts/solve_lp_external.jl --instance_path test/trivial_lp_model.mps --solver highs-ipm --output_dir /tmp
+        run: julia --project=$GITHUB_WORKSPACE/scripts $GITHUB_WORKSPACE/scripts/solve_lp_external.jl --instance_path test/trivial_lp_model.mps --solver highs-ipm --tolerance 1e-7 --output_dir /tmp
