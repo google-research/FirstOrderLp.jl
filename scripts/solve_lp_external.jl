@@ -183,8 +183,9 @@ function solve_instance_and_output(
       if JuMP.result_count(jump_model) > 0
         primal_sol = JuMP.value.(jump_variables)
         dual_sol = JuMP.dual.(jump_constraints)
-        # eps_optimal_absolute and eps_optimal_relative are set to 1 because
-        # the result depends only on their ratio, which is fixed in our experiments.
+        # eps_optimal_absolute and eps_optimal_relative are set to 1 because the
+        # the result depends only on their ratio, which is fixed in our
+        # experiments.
         last_iteration_stats = FirstOrderLp.compute_iteration_stats(
           lp,
           FirstOrderLp.cached_quadratic_program_info(lp),
