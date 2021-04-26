@@ -180,29 +180,43 @@ function solve_instance_and_output(
       end
 
 
-      primal_sol = JuMP.value.(jump_variables)
-      dual_sol = JuMP.dual.(jump_constraints)
+      if JuMP.result_count(jump_model) > 0
+        primal_sol = JuMP.value.(jump_variables)
+        dual_sol = JuMP.dual.(jump_constraints)
+        # eps_optimal_absolute and eps_optimal_relative are set to 1 because the
+        # the result depends only on their ratio, which is fixed in our
+        # experiments.
+        last_iteration_stats = FirstOrderLp.compute_iteration_stats(
+          lp,
+          FirstOrderLp.cached_quadratic_program_info(lp),
+          primal_sol,
+          dual_sol,
+          primal_sol,  # primal_ray_estimate
+          dual_sol,  # dual_ray_estimate
+          log.iteration_count,
+          cumulative_kkt_matrix_passes,
+          running_time,
+          1.0,  # eps_optimal_absolute
+          1.0,  # eps_optimal_relative
+          0.0,  # step_size
+          0.0,  # primal_weight
+          FirstOrderLp.POINT_TYPE_CURRENT_ITERATE,
+        )
+        log.solution_stats = last_iteration_stats
+        log.solution_type = FirstOrderLp.POINT_TYPE_CURRENT_ITERATE
+        primal_sol, dual_sol =
+          FirstOrderLp.undo_presolve(presolve_info, primal_sol, dual_sol)
 
-      # eps_optimal_absolute and eps_optimal_relative are set to 1 because
-      # the result depends only on their ratio, which is fixed in our experiments.
-      last_iteration_stats = FirstOrderLp.compute_iteration_stats(
-        lp,
-        FirstOrderLp.cached_quadratic_program_info(lp),
-        primal_sol,
-        dual_sol,
-        primal_sol,  # primal_ray_estimate
-        dual_sol,  # dual_ray_estimate
-        log.iteration_count,
-        cumulative_kkt_matrix_passes,
-        running_time,
-        1.0,  # eps_optimal_absolute
-        1.0,  # eps_optimal_relative
-        0.0,  # step_size
-        0.0,  # primal_weight
-        FirstOrderLp.POINT_TYPE_CURRENT_ITERATE,
-      )
-      log.solution_stats = last_iteration_stats
-      log.solution_type = FirstOrderLp.POINT_TYPE_CURRENT_ITERATE
+        primal_output_path = joinpath(output_dir, instance_name * "_primal.txt")
+        write_vector_to_file(primal_output_path, primal_sol)
+
+        dual_output_path = joinpath(output_dir, instance_name * "_dual.txt")
+        write_vector_to_file(dual_output_path, dual_sol)
+      else
+        log.solution_type = FirstOrderLp.POINT_TYPE_NONE
+        log.solution_stats = FirstOrderLp.IterationStats()
+        log.solution_stats.cumulative_time_sec = running_time
+      end
 
       # Complete iteration stats are not available, so we write only the
       # summary.
@@ -211,15 +225,6 @@ function solve_instance_and_output(
       open(summary_output_path, "w") do io
         write(io, JSON3.write(log, allow_inf = true))
       end
-
-      primal_sol, dual_sol =
-        FirstOrderLp.undo_presolve(presolve_info, primal_sol, dual_sol)
-
-      primal_output_path = joinpath(output_dir, instance_name * "_primal.txt")
-      write_vector_to_file(primal_output_path, primal_sol)
-
-      dual_output_path = joinpath(output_dir, instance_name * "_dual.txt")
-      write_vector_to_file(dual_output_path, dual_sol)
     end
   end
 
