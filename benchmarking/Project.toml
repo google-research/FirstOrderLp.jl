@@ -1,2 +1,4 @@
 [deps]
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+LightGraphs = "093fc24a-ae57-5d10-9952-331d41423f4d"
 SCIP = "82193955-e24f-5292-bf16-6f2c5261a85f"
