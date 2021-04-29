@@ -106,7 +106,7 @@ function parse_command_line()
     arg_type = Float64
     default = 0.99
 
-    "--seed"
+    "--random_seed"
     help = "Seed for the random generator."
     arg_type = Int
     default = 0
@@ -133,7 +133,7 @@ function main()
   graph = LightGraphs.SimpleGraphs.barabasi_albert(
     num_nodes,
     degree,
-    seed = parsed_args["seed"],
+    seed = parsed_args["random_seed"],
   )
   populate_pagerank_model(model, graph, parsed_args["damping_factor"])
   write_model_to_mps(model, parsed_args["output_filename"])
