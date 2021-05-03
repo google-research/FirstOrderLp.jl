@@ -163,7 +163,7 @@ function read_dataset(dataset_list::DatasetList)::DataFrame
 end
 
 if length(ARGS) != 2
-  error("Usage: process_json_to_csv.jl dataset_layout_csv output_csv")
+  error("Usage: process_json_to_csv.jl dataset_list_json output_csv")
 end
 
 dataset_list = JSON3.read(read(ARGS[1], String), DatasetList)
