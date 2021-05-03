@@ -51,3 +51,22 @@ $ ./preprocess.sh ~/mittelmann_benchmark ./mittelmann_instance_list \
     ~/mittelmann_preprocessed ~/PaPILO/build/bin/papilo
 ```
 
+## Pagerank instances
+
+The Pagerank instances apply the LP formulation from "Subgradient methods for
+huge-scale optimization problems" by Y. Nesterov (Mathematical Programming,
+2014. https://doi.org/10.1007/s10107-013-0686-4,
+http://www.optimization-online.org/DB_FILE/2012/02/3339.pdf (preprint)) to
+random Barabasi Albert preferential attachment graphs.
+
+1. From the local directory, instantiate the necessary packages by running
+   `julia --project=. -e 'import Pkg; Pkg.instantiate()'`.
+2. Generate the instances by running `generate_pagerank.jl`.
+
+For example,
+
+```sh
+$ julia --project=. generate_pagerank_lp.jl --num_nodes 10000 \
+    --approx_num_edges 30000 --random_seed 1 \
+    --output_filename ~/pagerank.10k.mps.gz
+```
