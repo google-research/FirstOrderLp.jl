@@ -42,13 +42,12 @@ jobs:
         run: julia --project=$GITHUB_WORKSPACE/scripts $GITHUB_WORKSPACE/scripts/solve_lp_external.jl --instance_path test/trivial_lp_model.mps --solver scs-indirect --tolerance 1e-7 --output_dir /tmp/scs
       - name: "solve_lp_external.jl test (HiGHS)"
         run: julia --project=$GITHUB_WORKSPACE/scripts $GITHUB_WORKSPACE/scripts/solve_lp_external.jl --instance_path test/trivial_lp_model.mps --solver highs-ipm --tolerance 1e-7 --output_dir /tmp/highs
+      - name: "benchmarking project setup"
+        run: julia --project=$GITHUB_WORKSPACE/benchmarking -e 'import Pkg; Pkg.instantiate()'
       - name: "process_json_to_csv"
         run: |
-          echo '{"datasets": [' >/tmp/layout.json
-          echo '{"name": "pdhg", "logs_directory": "/tmp/pdhg"},' >> /tmp/layout.json
-          echo '{"name": "scs", "logs_directory": "/tmp/scs"}]}' >>/tmp/layout.json
-          julia --project=benchmarking benchmarking/process_json_to_csv.jl \
-            /tmp/layout.json /tmp/dataset.csv
+          echo '{"datasets": [ {"name": "pdhg", "logs_directory": "/tmp/pdhg"}, {"name": "scs", "logs_directory": "/tmp/scs"}]}' >/tmp/layout.json
+          julia --project=$GITHUB_WORKSPACE/benchmarking $GITHUB_WORKSPACE/benchmarking/process_json_to_csv.jl /tmp/layout.json /tmp/dataset.csv
           if [[ $(wc -l </tmp/dataset.csv) != 3 ]]; then
             echo "Unexpected number of lines in dataset.csv"
             cat /tmp/dataset.csv
