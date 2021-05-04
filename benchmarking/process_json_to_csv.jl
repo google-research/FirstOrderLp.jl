@@ -36,7 +36,7 @@
 # $ julia --project=. process_json_to_csv.jl /tmp/layout.json /tmp/dataset.csv
 #
 # will generate a result file in /tmp/dataset.csv containing the summary of each
-# solve in all of four directories, with columns identifying the corresponding
+# solve in all of four directories, with a column identifying the corresponding
 # configuration.
 
 import CSV
@@ -112,8 +112,8 @@ function solve_log_to_csv_row(
   experiment_name::String,
 )::CsvRow
   row = CsvRow()
-  set_matching_fields(row, log)
   row.experiment_name = experiment_name
+  set_matching_fields(row, log)
   row.cumulative_kkt_matrix_passes =
     log.solution_stats.cumulative_kkt_matrix_passes
 
@@ -147,8 +147,8 @@ StructTypes.StructType(::Type{DatasetList}) = StructTypes.Struct()
 
 function read_dataset(dataset_list::DatasetList)::DataFrame
   rows = CsvRow[]
-  for name_and_location in dataset_list.datasets
-    logs_directory = name_and_location.logs_directory
+  for dataset in dataset_list.datasets
+    logs_directory = dataset.logs_directory
 
     log_files = Glob.glob("*_summary.json", logs_directory)
     if length(log_files) == 0
@@ -156,7 +156,7 @@ function read_dataset(dataset_list::DatasetList)::DataFrame
     end
     for filename in log_files
       log = JSON3.read(read(filename, String), FirstOrderLp.SolveLog)
-      push!(rows, solve_log_to_csv_row(log, name_and_location.name))
+      push!(rows, solve_log_to_csv_row(log, dataset.name))
     end
   end
   return rows_to_dataframe(rows)
