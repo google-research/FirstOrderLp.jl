@@ -44,12 +44,6 @@ jobs:
               $GITHUB_WORKSPACE/scripts/solve_qp.jl \
               --instance_path test/trivial_lp_model.mps \
               --method pdhg --output_dir /tmp
-      - name: "solve_qp.jl mirror-prox test"
-        run: |
-          julia --project=$GITHUB_WORKSPACE/scripts \
-              $GITHUB_WORKSPACE/scripts/solve_qp.jl \
-              --instance_path test/trivial_lp_model.mps \
-              --method mirror-prox --output_dir /tmp
       - name: "solve_lp_external.jl test (SCS)"
         run: |
           julia --project=$GITHUB_WORKSPACE/scripts \
