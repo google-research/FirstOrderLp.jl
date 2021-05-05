@@ -273,19 +273,6 @@ function check_termination_criteria(
 end
 
 function termination_reason_to_string(termination_reason::TerminationReason)
-  if termination_reason == TERMINATION_REASON_OPTIMAL
-    return "Optimal solution found"
-  elseif termination_reason == TERMINATION_REASON_PRIMAL_INFEASIBLE
-    return "Primal infeasible"
-  elseif termination_reason == TERMINATION_REASON_DUAL_INFEASIBLE
-    return "Dual infeasible"
-  elseif termination_reason == TERMINATION_REASON_ITERATION_LIMIT
-    return "Iteration limit reached"
-  elseif termination_reason == TERMINATION_REASON_TIME_LIMIT
-    return "Time limit reached"
-  elseif termination_reason == TERMINATION_REASON_NUMERICAL_ERROR
-    return "Numerical issues"
-  else
-    error("Unknown termination reason.")
-  end
+  # Strip TERMINATION_REASON_ prefix.
+  return string(termination_reason)[20:end]
 end
