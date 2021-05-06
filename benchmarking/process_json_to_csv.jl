@@ -44,22 +44,21 @@ import CSV
 import DataFrames
 import Glob
 import JSON3
-import StructArrays
 import StructTypes
 
 import FirstOrderLp
 
 const DataFrame = DataFrames.DataFrame
 
-function copy_fields_to_dict(to::Dict, from, fields::Vector{Symbol})
-  for fieldname in fields
-    to[fieldname] = getfield(from, fieldname)
-  end
-  return
+# Errors if "from" doesn't have the given fields.
+function extract_fields(from, fields::Vector{Symbol})
+  return Pair[fieldname => getfield(from, fieldname) for fieldname in fields]
 end
 
 const SOLVE_LOG_FIELDS_TO_COPY =
   [:instance_name, :termination_reason, :iteration_count, :solve_time_sec]
+
+@assert(SOLVE_LOG_FIELDS_TO_COPY ⊆ fieldnames(FirstOrderLp.SolveLog))
 
 const CONVERGENCE_INFORMATION_FIELDS_TO_COPY = [
   :primal_objective,
@@ -78,21 +77,30 @@ const CONVERGENCE_INFORMATION_FIELDS_TO_COPY = [
   :l_inf_dual_variable,
 ]
 
-function solve_log_to_dict(log::FirstOrderLp.SolveLog)::Dict
-  result = Dict()
-  copy_fields_to_dict(result, log, SOLVE_LOG_FIELDS_TO_COPY)
-  result[:cumulative_kkt_matrix_passes] =
-    log.solution_stats.cumulative_kkt_matrix_passes
+@assert(
+  CONVERGENCE_INFORMATION_FIELDS_TO_COPY ⊆
+  fieldnames(FirstOrderLp.ConvergenceInformation)
+)
+
+function solve_log_to_pairs(log::FirstOrderLp.SolveLog)::Vector{Pair}
+  result = extract_fields(log, SOLVE_LOG_FIELDS_TO_COPY)
+  push!(
+    result,
+    :cumulative_kkt_matrix_passes =>
+      log.solution_stats.cumulative_kkt_matrix_passes,
+  )
 
   point_type = log.solution_type
   # TODO: This doesn't properly handle the case of infeasibility certificates,
   # whose stats are in log.solution_stats.infeasibility_information.
   for convergence_information in log.solution_stats.convergence_information
     if convergence_information.candidate_type == point_type
-      copy_fields_to_dict(
+      append!(
         result,
-        convergence_information,
-        CONVERGENCE_INFORMATION_FIELDS_TO_COPY,
+        extract_fields(
+          convergence_information,
+          CONVERGENCE_INFORMATION_FIELDS_TO_COPY,
+        ),
       )
       break
     end
@@ -115,8 +123,9 @@ StructTypes.StructType(::Type{DatasetConfigAndLocation}) = StructTypes.Struct()
 StructTypes.StructType(::Type{DatasetList}) = StructTypes.Struct()
 
 function read_dataset(dataset_list::DatasetList)::DataFrame
-  rows = Dict[]
+  rows = NamedTuple[]
   for dataset in dataset_list.datasets
+    @assert(Set(dataset_list.config_labels) == Set(keys(dataset.config)))
     logs_directory = dataset.logs_directory
     experiment_label =
       join([dataset.config[c] for c in dataset_list.config_labels], ",")
@@ -127,15 +136,16 @@ function read_dataset(dataset_list::DatasetList)::DataFrame
     end
     for filename in log_files
       log = JSON3.read(read(filename, String), FirstOrderLp.SolveLog)
-      dict = solve_log_to_dict(log)
-      dict[:experiment_label] = experiment_label
+      row = Pair[]
+      push!(row, :experiment_label => experiment_label)
       for config_label in dataset_list.config_labels
-        dict[Symbol(config_label)] = dataset.config[config_label]
+        push!(row, Symbol(config_label) => dataset.config[config_label])
       end
-      push!(rows, dict)
+      append!(row, solve_log_to_pairs(log))
+      push!(rows, NamedTuple(row))
     end
   end
-  return DataFrame(map(NamedTuple, rows))
+  return DataFrame(rows)
 end
 
 if length(ARGS) != 2
