@@ -17,20 +17,21 @@
 # The collection of solve results can correspond to multiple parameter settings.
 # We assume that results for each parameter setting are in a separate directory
 # and are named as *_summary.json, containing serialized SolveLogs.
-# The layout of the results is specified by a JSON file of the following format:
-#
-# {"datasets": [
-#   {"name": "name1", "logs_directory": "path1"},
-#   {"name": "name2", "logs_directory": "path2"}
-#  ] }
+# The layout of the results is specified by a JSON file that matches the
+# DatasetList struct defined below.
 #
 # For example, suppose /tmp/layout.json contains the following content:
 # {"datasets": [
-#   {"name": "pdhg,1e-8", "logs_directory": "/tmp/pdhg_1e-8"},
-#   {"name": "pdhg,1e-4", "logs_directory": "/tmp/pdhg_1e-4"},
-#   {"name": "scs,1e-8", "logs_directory": "/tmp/scs_1e-8"},
-#   {"name": "scs,1e-4", "logs_directory": "/tmp/scs_1e-4"}
-#  ] }
+#   {"config": {"solver": "pdhg", "tolerance": "1e-8"}
+#     "logs_directory": "/tmp/pdhg_1e-8"},
+#   {"config": {"solver": "pdhg", "tolerance": "1e-4"}
+#     "logs_directory": "/tmp/pdhg_1e-4"},
+#   {"config": {"solver": "scs", "tolerance": "1e-8"}
+#     "logs_directory": "/tmp/scs_1e-8"},
+#   {"config": {"solver": "scs", "tolerance": "1e-4"}
+#     "logs_directory": "/tmp/scs_1e-4"}
+#  ],
+#  "config_labels": ["solver", "tolerance"] }
 #
 # Then:
 # $ julia --project=. process_json_to_csv.jl /tmp/layout.json /tmp/dataset.csv
@@ -50,71 +51,37 @@ import FirstOrderLp
 
 const DataFrame = DataFrames.DataFrame
 
-mutable struct CsvRow
-  experiment_name::String
-  instance_name::String
-
-  # These fields correpond to those in ConvergenceInformation.
-  primal_objective::Float64
-  dual_objective::Float64
-  relative_optimality_gap::Float64
-  l2_primal_residual::Float64
-  l_inf_primal_residual::Float64
-  l2_dual_residual::Float64
-  l_inf_dual_residual::Float64
-  relative_l2_primal_residual::Float64
-  relative_l_inf_primal_residual::Float64
-  relative_l2_dual_residual::Float64
-  relative_l_inf_dual_residual::Float64
-  l_inf_primal_variable::Float64
-  l2_primal_variable::Float64
-  l_inf_dual_variable::Float64
-
-  termination_reason::FirstOrderLp.TerminationReason
-  iteration_count::Int32
-  cumulative_kkt_matrix_passes::Float64
-  solve_time_sec::Float64
-end
-
-function CsvRow()
-  return CsvRow(
-    "",  # experiment_name
-    "",  # instance_name
-    NaN,  # primal_objective
-    NaN,  # dual_objective
-    NaN,  # relative_optimality_gap
-    NaN,  # l2_primal_residual
-    NaN,  # l_inf_primal_residual
-    NaN,  # l2_dual_residual
-    NaN,  # l_inf_dual_residual
-    NaN,  # relative_l2_primal_residual
-    NaN,  # relative_l_inf_primal_residual
-    NaN,  # relative_l2_dual_residual
-    NaN,  # relative_l_inf_dual_residual
-    NaN,  # l_inf_primal_variable
-    NaN,  # l2_primal_variable
-    NaN,  # l_inf_dual_variable
-    FirstOrderLp.TERMINATION_REASON_UNSPECIFIED,  # termination_reason
-    0,  # iteration_count
-    NaN,  # cumulative_kkt_matrix_passes
-    NaN,  # solve_time_sec
-  )
-end
-
-function set_matching_fields(to, from)
-  for field_name in intersect(fieldnames(typeof(to)), fieldnames(typeof(from)))
-    setfield!(to, field_name, getfield(from, field_name))
+function copy_fields_to_dict(to::Dict, from, fields::Vector{Symbol})
+  for fieldname in fields
+    to[fieldname] = getfield(from, fieldname)
   end
+  return
 end
 
-function solve_log_to_csv_row(
-  log::FirstOrderLp.SolveLog,
-  experiment_name::String,
-)::CsvRow
-  row = CsvRow()
-  row.experiment_name = experiment_name
-  set_matching_fields(row, log)
-  row.cumulative_kkt_matrix_passes =
+const SOLVE_LOG_FIELDS_TO_COPY =
+  [:instance_name, :termination_reason, :iteration_count, :solve_time_sec]
+
+const CONVERGENCE_INFORMATION_FIELDS_TO_COPY = [
+  :primal_objective,
+  :dual_objective,
+  :relative_optimality_gap,
+  :l2_primal_residual,
+  :l_inf_primal_residual,
+  :l2_dual_residual,
+  :l_inf_dual_residual,
+  :relative_l2_primal_residual,
+  :relative_l_inf_primal_residual,
+  :relative_l2_dual_residual,
+  :relative_l_inf_dual_residual,
+  :l_inf_primal_variable,
+  :l2_primal_variable,
+  :l_inf_dual_variable,
+]
+
+function solve_log_to_dict(log::FirstOrderLp.SolveLog)::Dict
+  result = Dict()
+  copy_fields_to_dict(result, log, SOLVE_LOG_FIELDS_TO_COPY)
+  result[:cumulative_kkt_matrix_passes] =
     log.solution_stats.cumulative_kkt_matrix_passes
 
   point_type = log.solution_type
@@ -122,33 +89,37 @@ function solve_log_to_csv_row(
   # whose stats are in log.solution_stats.infeasibility_information.
   for convergence_information in log.solution_stats.convergence_information
     if convergence_information.candidate_type == point_type
-      set_matching_fields(row, convergence_information)
+      copy_fields_to_dict(
+        result,
+        convergence_information,
+        CONVERGENCE_INFORMATION_FIELDS_TO_COPY,
+      )
       break
     end
   end
-  return row
+  return result
 end
 
-function rows_to_dataframe(rows::Vector{CsvRow})
-  return DataFrame(; StructArrays.components(StructArrays.StructArray(rows))...)
-end
-
-struct DatasetNameAndLocation
-  name::String
+struct DatasetConfigAndLocation
+  # Keys must match up with config_labels.
+  config::Dict{String,String}
   logs_directory::String
 end
 
 struct DatasetList
-  datasets::Vector{DatasetNameAndLocation}
+  datasets::Vector{DatasetConfigAndLocation}
+  config_labels::Vector{String}
 end
 
-StructTypes.StructType(::Type{DatasetNameAndLocation}) = StructTypes.Struct()
+StructTypes.StructType(::Type{DatasetConfigAndLocation}) = StructTypes.Struct()
 StructTypes.StructType(::Type{DatasetList}) = StructTypes.Struct()
 
 function read_dataset(dataset_list::DatasetList)::DataFrame
-  rows = CsvRow[]
+  rows = Dict[]
   for dataset in dataset_list.datasets
     logs_directory = dataset.logs_directory
+    experiment_label =
+      join([dataset.config[c] for c in dataset_list.config_labels], ",")
 
     log_files = Glob.glob("*_summary.json", logs_directory)
     if length(log_files) == 0
@@ -156,10 +127,15 @@ function read_dataset(dataset_list::DatasetList)::DataFrame
     end
     for filename in log_files
       log = JSON3.read(read(filename, String), FirstOrderLp.SolveLog)
-      push!(rows, solve_log_to_csv_row(log, dataset.name))
+      dict = solve_log_to_dict(log)
+      dict[:experiment_label] = experiment_label
+      for config_label in dataset_list.config_labels
+        dict[Symbol(config_label)] = dataset.config[config_label]
+      end
+      push!(rows, dict)
     end
   end
-  return rows_to_dataframe(rows)
+  return DataFrame(map(NamedTuple, rows))
 end
 
 if length(ARGS) != 2
