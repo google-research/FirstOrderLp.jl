@@ -62,9 +62,10 @@ jobs:
       - name: "process_json_to_csv"
         run: |
           echo '{"datasets": [
-                {"name": "pdhg", "logs_directory": "/tmp/pdhg"},
-                {"name": "scs", "logs_directory": "/tmp/scs"}
-              ]}' >/tmp/layout.json
+                {"config": {"name": "pdhg"}, "logs_directory": "/tmp/pdhg"},
+                {"config": {"name": "scs"}, "logs_directory": "/tmp/scs"}
+              ],
+              "config_labels": ["name"]}' >/tmp/layout.json
           julia --project=$GITHUB_WORKSPACE/benchmarking \
               $GITHUB_WORKSPACE/benchmarking/process_json_to_csv.jl \
               /tmp/layout.json /tmp/dataset.csv
