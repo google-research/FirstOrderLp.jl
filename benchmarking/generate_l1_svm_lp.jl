@@ -32,14 +32,24 @@ function populate_libsvm_model(
   regularizer_weight::Float64,
 )
   n, d = size(data.feature_matrix)
-  println("Generating a model with " * string(n) * " datapoints and " * string(d-1) * " features.")
+  println(
+    "Generating a model with " *
+    string(n) *
+    " datapoints and " *
+    string(d - 1) *
+    " features.",
+  )
   JuMP.@variable(model, beta[i = 1:d],)
   JuMP.@variable(model, w[i = 1:n], lower_bound = 0.0)
   JuMP.@variable(model, z[i = 1:d])
   JuMP.@objective(model, Min, sum(w) + sum(z))
   JuMP.@constraint(model, z .>= beta)
   JuMP.@constraint(model, z .>= -beta)
-  JuMP.@constraint(model, w .>= ((LinearAlgebra.ones(n) - data.labels .* (data.feature_matrix * beta))))
+  JuMP.@constraint(
+    model,
+    w .>=
+    ((LinearAlgebra.ones(n) - data.labels .* (data.feature_matrix * beta)))
+  )
   return model
 end
 

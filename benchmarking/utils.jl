@@ -49,7 +49,7 @@ function load_libsvm_file(file_name::String; binary::Bool = false)
       row_index += 1
       split_line = split(line)
       if binary
-        label = parse(Float64,split_line[1])
+        label = parse(Float64, split_line[1])
         # This ensures that labels are 1 or -1. Different dataset use {-1, 1}, {0, 1}, and {1, 2}.
         if abs(label - 1.0) < 1e-05
           label = 1.0
@@ -58,13 +58,13 @@ function load_libsvm_file(file_name::String; binary::Bool = false)
         end
         push!(target, label)
       else
-        push!(target, parse(Float64,split_line[1]))
+        push!(target, parse(Float64, split_line[1]))
       end
-      for i = 2:length(split_line)
+      for i in 2:length(split_line)
         push!(row_indicies, row_index)
-        matrix_coef = split(split_line[i],":")
-        push!(col_indicies, parse(Int64,matrix_coef[1]))
-        push!(matrix_values, parse(Float64,matrix_coef[2]))
+        matrix_coef = split(split_line[i], ":")
+        push!(col_indicies, parse(Int64, matrix_coef[1]))
+        push!(matrix_values, parse(Float64, matrix_coef[2]))
       end
     end
     feature_matrix = sparse(row_indicies, col_indicies, matrix_values)
@@ -73,29 +73,29 @@ function load_libsvm_file(file_name::String; binary::Bool = false)
 end
 
 function normalize_columns(feature_matrix::SparseMatrixCSC{Float64,Int64})
-  m = size(feature_matrix,2)
+  m = size(feature_matrix, 2)
   normalize_columns_by = ones(m)
-  for j = 1:m
-    col_vals = feature_matrix[:,j].nzval
+  for j in 1:m
+    col_vals = feature_matrix[:, j].nzval
     if length(col_vals) > 0
       normalize_columns_by[j] = 1.0 / norm(col_vals, 2)
     end
   end
-  return feature_matrix * sparse(1:m,1:m,normalize_columns_by)
+  return feature_matrix * sparse(1:m, 1:m, normalize_columns_by)
 end
 
 function remove_empty_columns(feature_matrix::SparseMatrixCSC{Float64,Int64})
   keep_cols = Array{Int64,1}()
-  for j = 1:size(feature_matrix,2)
-    if length(feature_matrix[:,j].nzind) > 0
+  for j in 1:size(feature_matrix, 2)
+    if length(feature_matrix[:, j].nzind) > 0
       push!(keep_cols, j)
     end
   end
-  return feature_matrix[:,keep_cols]
+  return feature_matrix[:, keep_cols]
 end
 
 function add_intercept(feature_matrix::SparseMatrixCSC{Float64,Int64})
-  return [sparse(ones(size(feature_matrix,1))) feature_matrix]
+  return [sparse(ones(size(feature_matrix, 1))) feature_matrix]
 end
 
 
