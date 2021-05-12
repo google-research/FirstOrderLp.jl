@@ -39,7 +39,7 @@ function populate_libsvm_model(
   JuMP.@objective(model, Min, sum(w) + sum(z))
   JuMP.@constraint(model, z .>= beta)
   JuMP.@constraint(model, z .>= -beta)
-  JuMP.@constraint(model, w .>= LinearAlgebra.ones(n) - (data.labels .* data.feature_matrix) * beta)
+  JuMP.@constraint(model, w .>= ((LinearAlgebra.ones(n) - data.labels .* (data.feature_matrix * beta))))
   return model
 end
 
@@ -87,7 +87,7 @@ function main()
   regularizer_weight = parsed_args["regularizer_weight"]
   input_filename = parsed_args["input_filename"]
 
-  data = load_libsvm_file(input_filename)
+  data = load_libsvm_file(input_filename, binary = true)
   data = preprocess_learning_data(data)
   populate_libsvm_model(model, data, regularizer_weight)
   write_model_to_mps(model, parsed_args["output_filename"])

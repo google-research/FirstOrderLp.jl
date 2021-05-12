@@ -34,7 +34,10 @@ mutable struct LearningData
   labels::Vector{Float64}
 end
 
-function load_libsvm_file(file_name::String)
+"""
+Loads a LIBSVM file into a LearningData struct.
+"""
+function load_libsvm_file(file_name::String; binary::Bool = false)
   open(file_name, "r") do io
     target = Array{Float64,1}()
     row_indicies = Array{Int64,1}()
@@ -45,7 +48,18 @@ function load_libsvm_file(file_name::String)
     for line in eachline(io)
       row_index += 1
       split_line = split(line)
-      push!(target, parse(Float64,split_line[1]))
+      if binary
+        label = parse(Float64,split_line[1])
+        # This ensures that labels are 1 or -1. Different dataset use {-1, 1}, {0, 1}, and {1, 2}.
+        if abs(label - 1.0) < 1e-05
+          label = 1.0
+        else
+          label = -1.0
+        end
+        push!(target, label)
+      else
+        push!(target, parse(Float64,split_line[1]))
+      end
       for i = 2:length(split_line)
         push!(row_indicies, row_index)
         matrix_coef = split(split_line[i],":")
