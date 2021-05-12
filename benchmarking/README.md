@@ -1,7 +1,7 @@
 # Benchmarking
 
-This directory contains scripts for generating datasets used for benchmarking
-FirstOrderLp.
+This directory contains scripts for generating datasets and processing results
+for benchmarking FirstOrderLp.
 
 ## Filtered and preprocessed MIPLIB 2017 collection dataset
 
@@ -51,3 +51,45 @@ $ ./preprocess.sh ~/mittelmann_benchmark ./mittelmann_instance_list \
     ~/mittelmann_preprocessed ~/PaPILO/build/bin/papilo
 ```
 
+## Pagerank instances
+
+The Pagerank instances apply the LP formulation from "Subgradient methods for
+huge-scale optimization problems" by Y. Nesterov (Mathematical Programming,
+2014. https://doi.org/10.1007/s10107-013-0686-4,
+http://www.optimization-online.org/DB_FILE/2012/02/3339.pdf (preprint)) to
+random Barabasi Albert preferential attachment graphs.
+
+1. From the local directory, instantiate the necessary packages by running
+   `julia --project=. -e 'import Pkg; Pkg.instantiate()'`.
+2. Generate the instances by running `generate_pagerank.jl`.
+
+For example,
+
+```sh
+$ julia --project=. generate_pagerank_lp.jl --num_nodes 10000 \
+    --approx_num_edges 30000 --random_seed 1 \
+    --output_filename ~/pagerank.10k.mps.gz
+```
+## Procesing JSON results
+
+`solve_qp.jl` and `solve_lp_external.jl` output JSON files with solve
+statistics. Use `process_json_to_csv.jl` to process collections of these files
+into a CSV file for analysis.
+
+For example (from the `FirstOrderLp.jl` root directory),
+
+```sh
+$ julia --project=scripts scripts/solve_qp.jl \
+--instance_path test/trivial_lp_model.mps --method pdhg \
+--output_dir /tmp/first_order_lp_solve
+$ julia --project=scripts scripts/solve_lp_external.jl \
+--instance_path test/trivial_lp_model.mps --solver scs-indirect \
+--tolerance 1e-7 --output_dir /tmp/scs_solve
+$ echo '{"datasets": [
+   {"name": "pdhg", "logs_directory": "/tmp/first_order_lp_solve"},
+   {"name": "scs", "logs_directory": "/tmp/scs_solve"}]}' >/tmp/layout.json
+$ julia --project=benchmarking benchmarking/process_json_to_csv.jl \
+/tmp/layout.json /tmp/dataset.csv
+```
+
+This outputs to `/tmp/dataset.csv`.
