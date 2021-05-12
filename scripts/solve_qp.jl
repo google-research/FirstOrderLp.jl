@@ -429,11 +429,11 @@ function parse_command_line()
     arg_type = Float64
     default = 0.6
 
-    "--malitsky_pock_contraction_factor"
+    "--malitsky_pock_downscaling_factor"
     help =
-      "Malitsky and Pock step size parameter. Contraction factor by " *
-      "which the step size is multiplied for in the inner loop. Corresponds" *
-      "to mu in the paper (https://arxiv.org/pdf/1608.08883.pdf)."
+      "Malitsky and Pock step size parameter. Factor by which the step size " *
+      "is multiplied for in the inner loop. Corresponds to mu in the paper " *
+      "(https://arxiv.org/pdf/1608.08883.pdf)."
     arg_type = Float64
     default = 0.7
 

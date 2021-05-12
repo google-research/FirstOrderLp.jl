@@ -19,10 +19,10 @@ Parameters of the Malitsky and Pock lineseach algorithm
 struct MalitskyPockStepsizeParameters
 
   """
-  Contraction factor by which the step size is multiplied for in the inner
-  loop. Valid values: interval (0, 1). Corresponds to mu in the paper.
+  Factor by which the step size is multiplied for in the inner loop.
+  Valid values: interval (0, 1). Corresponds to mu in the paper.
   """
-  contraction_factor::Float64
+  downscaling_factor::Float64
 
   """
   Breaking factor that defines the stopping criteria of the linesearch.
@@ -609,7 +609,7 @@ function take_step(
       )
       done = true
     end
-    step_size *= step_params.contraction_factor
+    step_size *= step_params.downscaling_factor
   end
   if iter == max_iter && !done
     solver_state.numerical_error = true
