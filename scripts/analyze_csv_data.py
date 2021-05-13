@@ -38,19 +38,26 @@ def solved_problems_vs_xaxis_figs(dfs, xaxis, xlabel, prefix):
 
     plt.ylabel('Number of problems solved')
     plt.xlabel(xlabel)
-    plt.legend()
-    plt.savefig(f'{prefix}_{xaxis}_v_solved_probs.pdf')
+    plt.legend(bbox_to_anchor=(1.04, 0.5), loc='center left')
+    plt.savefig(f'{prefix}_{xaxis}_v_solved_probs.pdf', bbox_inches = "tight")
 
 
 def gen_solved_problems_plots(df, prefix):
-    keys = df['experiment_label'].unique()
-    dfs = {k: df[df['experiment_label'] == k] for k in keys}
+    exps = df['experiment_label'].unique()
+    dfs = {k: df[df['experiment_label'] == k] for k in exps}
     optimal_dfs = {k: v[v['termination_reason'] == OPT] for (k,v) in dfs.items()}
 
     solved_problems_vs_xaxis_figs(optimal_dfs, 'cumulative_kkt_matrix_passes',
                                   'Cumulative KKT matrix passes', prefix)
     solved_problems_vs_xaxis_figs(optimal_dfs, 'solve_time_sec',
                                   'Wall-clock time (secs)', prefix)
+
+
+
+def gen_solved_problems_plots_split_tol(df, prefix):
+    tols = df['tolerance'].unique()
+    for t in tols:
+        gen_solved_problems_plots(df[df['tolerance'] == t], prefix + f'_{t}')
 
 
 def gen_total_solved_problems_table(df, prefix):
@@ -72,10 +79,16 @@ def gen_total_solved_problems_table(df, prefix):
       f.write(table)
 
 
-def plot_loghist(x, bins=25):
+def gen_total_solved_problems_table_split_tol(df, prefix):
+    tols = df['tolerance'].unique()
+    for t in tols:
+        gen_total_solved_problems_table(df[df['tolerance'] == t], prefix + f'_{t}')
+
+
+def plot_loghist(x, nbins):
     x = x[~np.isnan(x)]
-    hist, bins = np.histogram(x, bins=bins)
-    logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
+    hist, bins = np.histogram(x, bins=nbins)
+    logbins = np.logspace(np.log10(bins[0]+1e-6),np.log10(bins[-1]), nbins)
     plt.hist(x, bins=logbins)
     plt.xscale('log')
 
@@ -84,34 +97,52 @@ def gen_ratio_histograms(df, prefix):
         df = df.reset_index()
         if (df['termination_reason'] != OPT).any():
             return np.nan
-        return (df.iloc[0]['cumulative_kkt_matrix_passes'] / 
+        return (df.iloc[0]['cumulative_kkt_matrix_passes'] /
                 df.iloc[1]['cumulative_kkt_matrix_passes'])
 
     ratios = df.groupby(['tolerance', 'instance_name']) \
         .apply(performance_ratio_fn) \
         .reset_index(name = 'default/vanilla')
     plt.figure()
-    plot_loghist(ratios[ratios['tolerance'] == 1e-4]['default/vanilla'], bins=50)
+    plot_loghist(ratios[ratios['tolerance'] == 1e-4]['default/vanilla'], 25)
     plt.savefig(f'{prefix}_performance_ratio_1e-4.pdf')
     plt.figure()
-    plot_loghist(ratios[ratios['tolerance'] == 1e-8]['default/vanilla'], bins=50)
+    plot_loghist(ratios[ratios['tolerance'] == 1e-8]['default/vanilla'], 25)
     plt.savefig(f'{prefix}_performance_ratio_1e-8.pdf')
 
 
+# bisco pdhg vs vanilla pdhg
 df = pd.read_csv('pdhg_miplib_defaults_vs_vanilla_100k.csv')
-gen_solved_problems_plots(df, 'miplib_defaults_v_vanilla')
-gen_total_solved_problems_table(df, 'miplib_defaults_v_vanilla')
+gen_solved_problems_plots_split_tol(df, 'miplib_defaults_v_vanilla')
+gen_total_solved_problems_table_split_tol(df, 'miplib_defaults_v_vanilla')
 gen_ratio_histograms(df, 'miplib_defauls_v_vanilla')
 
+# bisco vs mp vs scs on MIPLIB
 df_pdhg_mp = pd.read_csv('miplib_pdhg_mp_1h.csv')
 df_scs = pd.read_csv('miplib_scs_1h.csv')
 df = pd.concat((df_pdhg_mp, df_scs))
-gen_solved_problems_plots(df, 'miplib')
-gen_total_solved_problems_table(df, 'miplib')
+gen_solved_problems_plots_split_tol(df, 'miplib')
+gen_total_solved_problems_table_split_tol(df, 'miplib')
 
+# bisco vs mp vs scs on MITTELMANN
 df_pdhg_mp = pd.read_csv('mittelmann_pdhg_mp_1h.csv')
 df_scs = pd.read_csv('mittelmann_scs_1h.csv')
 df = pd.concat((df_pdhg_mp, df_scs))
-gen_solved_problems_plots(df, 'mittelmann')
-gen_total_solved_problems_table(df, 'mittelmann')
+gen_solved_problems_plots_split_tol(df, 'mittelmann')
+gen_total_solved_problems_table_split_tol(df, 'mittelmann')
+
+# bisco presolve vs no presolve
+df = pd.read_csv('miplib_pdhg_nopresolve_100k.csv')
+df_default = pd.read_csv('pdhg_miplib_defaults_vs_vanilla_100k.csv')
+df_default = df_default[(df_default['experiment_label'] == 'pdhg defaults,1e-4') |
+                        (df_default['experiment_label'] == 'pdhg defaults,1e-8')]
+
+df = pd.concat((df, df_default))
+gen_solved_problems_plots_split_tol(df, 'miplib_presolve')
+gen_total_solved_problems_table_split_tol(df, 'miplib_presolve')
+
+# bisco scaling vs no scaling
+df = pd.read_csv('miplib_pdhg_scaling_100k.csv')
+gen_solved_problems_plots_split_tol(df, 'miplib_scaling')
+gen_total_solved_problems_table_split_tol(df, 'miplib_scaling')
 
