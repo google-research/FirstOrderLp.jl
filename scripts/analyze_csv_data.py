@@ -16,6 +16,7 @@
 
 
 import numpy as np
+import scipy.stats
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -92,7 +93,21 @@ def plot_loghist(x, nbins):
     plt.hist(x, bins=logbins)
     plt.xscale('log')
 
+
+def gen_ratio_histograms_split_tol(df, prefix):
+    tols = df['tolerance'].unique()
+    for t in tols:
+        gen_ratio_histograms(df[df['tolerance'] == t], prefix + f'_{t}')
+
+def geomean(x):
+    x = x[~np.isnan(x)]
+    return scipy.stats.mstats.gmean(x)
+
+
 def gen_ratio_histograms(df, prefix):
+
+    (l1, l2) = df['experiment_label'].unique()
+
     def performance_ratio_fn(df):
         df = df.reset_index()
         if (df['termination_reason'] != OPT).any():
@@ -100,22 +115,31 @@ def gen_ratio_histograms(df, prefix):
         return (df.iloc[0]['cumulative_kkt_matrix_passes'] /
                 df.iloc[1]['cumulative_kkt_matrix_passes'])
 
-    ratios = df.groupby(['tolerance', 'instance_name']) \
+    ratios = df.groupby(['instance_name']) \
         .apply(performance_ratio_fn) \
-        .reset_index(name = 'default/vanilla')
+        .reset_index(name = 'ratio')
     plt.figure()
-    plot_loghist(ratios[ratios['tolerance'] == 1e-4]['default/vanilla'], 25)
-    plt.savefig(f'{prefix}_performance_ratio_1e-4.pdf')
-    plt.figure()
-    plot_loghist(ratios[ratios['tolerance'] == 1e-8]['default/vanilla'], 25)
-    plt.savefig(f'{prefix}_performance_ratio_1e-8.pdf')
+    plt.title(f'({l1}):({l2})')
+    plot_loghist(ratios['ratio'], 25)
+    plt.savefig(f'{prefix}_performance_ratio.pdf')
+    table = ratios.to_latex(float_format="%.2f",
+                            longtable=False,
+                            index=False,
+                            caption=f'Performance_ratio.',
+                            label=f't:solved-probs',
+                            column_format='lc')
+    with open(f'{prefix}_({l1}):({l2})_ratio_table.tex', "w") as f:
+      f.write(table)
+    gmean = geomean(ratios['ratio'])
+    print(f'{prefix}: ratio ({l1}) / ({l2}) geomean: {gmean}')
+
 
 
 # bisco pdhg vs vanilla pdhg
 df = pd.read_csv('pdhg_miplib_defaults_vs_vanilla_100k.csv')
 gen_solved_problems_plots_split_tol(df, 'miplib_defaults_v_vanilla')
 gen_total_solved_problems_table_split_tol(df, 'miplib_defaults_v_vanilla')
-gen_ratio_histograms(df, 'miplib_defauls_v_vanilla')
+gen_ratio_histograms_split_tol(df, 'miplib_defaults_v_vanilla')
 
 # bisco vs mp vs scs on MIPLIB
 df_pdhg_mp = pd.read_csv('miplib_pdhg_mp_1h.csv')
@@ -147,15 +171,15 @@ gen_solved_problems_plots_split_tol(df, 'miplib_scaling')
 gen_total_solved_problems_table_split_tol(df, 'miplib_scaling')
 
 
-# bisco scaling experiments 
-if False:
+# bisco scaling experiments
+if True:
     df = pd.read_csv('miplib_pdhg_scaling_100k.csv')
     df = df[(df['experiment_label'] == 'tol 1e-8,5 rounds,pock_chambolle alpha=1,miplib_scaling_100k') | (df['experiment_label'] == 'tol 1e-8,10 rounds,l2,miplib_scaling_100k')]
     gen_solved_problems_plots_split_tol(df, 'miplib_new_default')
     gen_total_solved_problems_table_split_tol(df, 'miplib_new_default')
+    gen_ratio_histograms_split_tol(df, 'miplib_new_default')
 
-
-# bisco restart vs no restart 
+# bisco restart vs no restart
 df = pd.read_csv('miplib_pdhg_restarts_100k.csv')
 gen_solved_problems_plots_split_tol(df, 'miplib_restarts')
 gen_total_solved_problems_table_split_tol(df, 'miplib_restarts')
