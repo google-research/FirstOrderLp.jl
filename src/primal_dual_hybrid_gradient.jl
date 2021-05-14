@@ -472,8 +472,8 @@ function compute_next_dual_solution(
   #           + 0.5*norm_Y(y-current_dual_solution)^2]
   dual_gradient = compute_dual_gradient(
     problem,
-    next_primal +
-    extrapolation_coefficient * (next_primal - current_primal_solution),
+    next_primal .+
+    extrapolation_coefficient .* (next_primal - current_primal_solution),
   )
   next_dual =
     current_dual_solution .+ (primal_weight * step_size) .* dual_gradient
@@ -522,8 +522,12 @@ function compute_interaction_and_movement(
 )
   delta_primal = next_primal .- solver_state.current_primal_solution
   delta_dual = next_dual .- solver_state.current_dual_solution
-  primal_objective_interaction =
-    0.5 * (delta_primal' * problem.objective_matrix * delta_primal)
+  if iszero(problem.objective_matrix)
+    primal_objective_interaction = 0.0
+  else
+    primal_objective_interaction =
+      0.5 * (delta_primal' * problem.objective_matrix * delta_primal)
+  end
   primal_dual_interaction =
     delta_primal' * (next_dual_product .- solver_state.current_dual_product)
   interaction = abs(primal_dual_interaction) + abs(primal_objective_interaction)
