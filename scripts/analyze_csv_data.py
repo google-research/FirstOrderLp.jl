@@ -146,3 +146,17 @@ df = pd.read_csv('miplib_pdhg_scaling_100k.csv')
 gen_solved_problems_plots_split_tol(df, 'miplib_scaling')
 gen_total_solved_problems_table_split_tol(df, 'miplib_scaling')
 
+
+# bisco scaling experiments 
+if False:
+    df = pd.read_csv('miplib_pdhg_scaling_100k.csv')
+    df = df[(df['experiment_label'] == 'tol 1e-8,5 rounds,pock_chambolle alpha=1,miplib_scaling_100k') | (df['experiment_label'] == 'tol 1e-8,10 rounds,l2,miplib_scaling_100k')]
+    gen_solved_problems_plots_split_tol(df, 'miplib_new_default')
+    gen_total_solved_problems_table_split_tol(df, 'miplib_new_default')
+
+
+# bisco restart vs no restart 
+df = pd.read_csv('miplib_pdhg_restarts_100k.csv')
+gen_solved_problems_plots_split_tol(df, 'miplib_restarts')
+gen_total_solved_problems_table_split_tol(df, 'miplib_restarts')
+
