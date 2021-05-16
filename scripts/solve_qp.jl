@@ -440,8 +440,8 @@ function parse_command_line()
     "--malitsky_pock_breaking_factor"
     help =
       "Malitsky and Pock step size parameter. The breaking factor " *
-      "defines the stopping criteria of the linesearch. It should be a " *
-      "number between (0.0, 1.0). Corresponds to delta in the paper " *
+      "defines the stopping criteria of the linesearch. It should be in the " *
+      "interval (0.0, 1.0]. Corresponds to delta in the paper " *
       "(https://arxiv.org/pdf/1608.08883.pdf)."
     arg_type = Float64
     default = 0.99
