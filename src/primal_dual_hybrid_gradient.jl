@@ -24,9 +24,11 @@ struct MalitskyPockStepsizeParameters
   """
   downscaling_factor::Float64
 
+  # Y. Malitsky notes that while the theory requires the value to be strictly
+  # less than 1, a value of 1 should work fine in practice.
   """
   Breaking factor that defines the stopping criteria of the linesearch.
-  Valid values: interval (0, 1). Corresponds to delta in the paper.
+  Valid values: interval (0, 1]. Corresponds to delta in the paper.
   """
   breaking_factor::Float64
 
