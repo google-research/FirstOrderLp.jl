@@ -131,15 +131,21 @@ def gen_ratio_histograms(df, prefix):
         df0 = df[df['experiment_label'] == l0]
         df1 = df[df['experiment_label'] == l1]
 
+        instance = df.instance_name.unique()
+
         if len(df0) == 1 and df0['termination_reason'].iloc[0] == OPT:
             kkt_passes_0 = df0['cumulative_kkt_matrix_passes'].iloc[0]
         else:
             kkt_passes_0 = PAR10_KKT_PASSES
+            if len(df0) == 0:
+                print(f'{l0} missing {instance}')
 
         if len(df1) == 1 and df1['termination_reason'].iloc[0] == OPT:
             kkt_passes_1 = df1['cumulative_kkt_matrix_passes'].iloc[0]
         else:
             kkt_passes_1 = PAR10_KKT_PASSES
+            if len(df1) == 0:
+                print(f'{l1} missing {instance}')
 
         # if (df['termination_reason'] != OPT).any():
         #    return np.nan
