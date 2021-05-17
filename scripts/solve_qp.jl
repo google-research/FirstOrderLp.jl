@@ -200,15 +200,22 @@ function parse_command_line()
     "--l2_norm_rescaling"
     help = "If true, applies L2 norm rescaling after Ruiz rescaling."
     arg_type = Bool
+    default = false
+
+    "--pock_chambolle_rescaling"
+    help =
+      "If true, Pock-Chambolle rescaling is applied after the (optional) " *
+      "L2 norm rescaling using the parameter pock_chambolle_alpha. If false, " *
+      "this rescaling step is skipped."
+    arg_type = Bool
     default = true
 
     "--pock_chambolle_alpha"
     help =
-      "If specified, applies Pock-Chambolle rescaling using the exponent " *
-      "parameter alpha after the (optional) L2 norm rescaling. Alpha must " *
-      "be in the interval [0, 2]. If not specified, this rescaling step is " *
-      "skipped."
+      "The exponent parameter alpha used if Pock-Chambolle rescaling is " *
+      "applied. Alpha must be in the interval [0, 2]."
     arg_type = Float64
+    default = 1.0
 
     "--primal_importance"
     help =
@@ -509,7 +516,10 @@ function main()
       parsed_args["use_approximate_localized_duality_gap"],
     )
 
-    pock_chambolle_alpha = get(parsed_args, "pock_chambolle_alpha", nothing)
+    pock_chambolle_alpha = nothing
+    if parsed_args["pock_chambolle_rescaling"]
+      pock_chambolle_alpha = parsed_args["pock_chambolle_alpha"]
+    end
 
     termination_criteria = FirstOrderLp.construct_termination_criteria()
     if parsed_args["optimality_norm"] == "l2"
