@@ -208,7 +208,7 @@ gen_total_solved_problems_table_split_tol(df, 'miplib_scaling')
 # bisco test two scaling settings
 df = pd.read_csv('miplib_scaling_100k.csv')
 l0 = '1e-4,10 rounds,pock_chambolle alpha=1,miplib_scaling_100k'
-l1 = '1e-4,10 rounds,l2,miplib_scaling_100k' 
+l1 = '1e-4,10 rounds,l2,miplib_scaling_100k'
 df = df[(df['experiment_label'] == l0) | (df['experiment_label'] == l1)]
 gen_solved_problems_plots_split_tol(df, 'miplib_new_default')
 gen_total_solved_problems_table_split_tol(df, 'miplib_new_default')
