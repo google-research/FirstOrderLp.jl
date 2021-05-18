@@ -170,8 +170,7 @@ def gen_ratio_histograms(df, prefix):
     print(f'{prefix}: ratio ({l0}) / ({l1}) geomean: {gmean}')
 
 # Pull out 'default' (ie best) pdhg implementation to compare against:
-df_default = pd.read_csv('miplib_pdhg_mp_1h.csv')
-df_default = df_default[df_default['method'] == 'pdhg']
+df_default = pd.read_csv('miplib_pdhg_enhanced_100k.csv')
 
 # bisco pdhg vs vanilla pdhg (JOIN DEFAULT)
 df = pd.read_csv('miplib_pdhg_vanilla_100k.csv')
