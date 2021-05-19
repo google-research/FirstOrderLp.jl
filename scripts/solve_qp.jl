@@ -559,7 +559,7 @@ function main()
     elseif parsed_args["method"] == "pdhg"
       if parsed_args["step_size_policy"] == "malitsky-pock"
         step_size_policy_params = FirstOrderLp.MalitskyPockStepsizeParameters(
-          parsed_args["malitsky_pock_contraction_factor"],
+          parsed_args["malitsky_pock_downscaling_factor"],
           parsed_args["malitsky_pock_breaking_factor"],
           parsed_args["malitsky_pock_interpolation_coefficient"],
         )
