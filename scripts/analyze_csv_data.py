@@ -36,8 +36,17 @@ SCALING_EXPS_TO_USE = [
     '10 rounds,pock_chambolle alpha=1',
 ]
 
+PRIMALWEIGHT_EXPS_TO_USE = [
+    'adaptive',
+    'Fixed 1e-0',
+]
+
+# placeholder:
+_BEST_STR = '_best_str_'
+
+
+# Horrible HACK, but needs to be done
 def label_lookup(label):
-    # Horrible HACK, but needs to be done
     if 'pdhg_enhanced' in label:
         return 'PLOP'
     if 'mirror-prox' in label:
@@ -60,12 +69,24 @@ def label_lookup(label):
         return 'PLOP'
     if 'off,off' in label:
         return 'No scaling'
-    if 'off,pock_chambolle alpha=1' in label:
+    if r'off,pock_chambolle ($\alpha=1$)' in label:
         return 'Pock-Chambolle'
     if '10 rounds,off' in label:
         return 'Ruiz'
-    if '10 rounds,pock_chambolle alpha=1' in label:
+    if r'10 rounds,pock_chambolle ($\alpha=1$)' in label:
         return 'Ruiz + Pock-Chambolle'
+    if 'stepsize' in label:
+        if 'adaptive' in label:
+            return 'PLOP'
+        if 'fixed' in label:
+            return 'Fixed step-size'
+    if 'primalweight' in label:
+        if 'adaptive' in label:
+            return 'PLOP'
+        if 'Fixed 1e-0' in label:
+            return r'Fixed primal weight ($\theta=0$)'
+        if _BEST_STR in label:
+            return 'Best per-instance fixed primal weight'
     return label
 
 
@@ -266,6 +287,8 @@ mittelmann_instances = [p.strip() for p in mittelmann_instances if p[0] != '#']
 df_default = pd.read_csv('miplib_pdhg_enhanced_100k.csv')
 df_default = fill_in_missing_problems(df_default, miplib_instances)
 
+######################################################################
+
 # bisco pdhg vs vanilla pdhg (JOIN DEFAULT)
 df = pd.read_csv('miplib_pdhg_vanilla_100k.csv')
 df = fill_in_missing_problems(df, miplib_instances)
@@ -273,6 +296,8 @@ df = pd.concat((df_default, df))
 gen_solved_problems_plots_split_tol(df, 'miplib_defaults_v_vanilla')
 gen_total_solved_problems_table_split_tol(df, 'miplib_defaults_v_vanilla', PAR)
 gen_ratio_histograms_split_tol(df, 'miplib_defaults_v_vanilla', PAR)
+
+######################################################################
 
 # bisco vs mp vs scs on MIPLIB (JOIN MDHG/MP WITH SCS)
 df_pdhg_mp = pd.read_csv('miplib_pdhg_mp_1h.csv')
@@ -283,6 +308,8 @@ df = pd.concat((df_pdhg_mp, df_scs))
 gen_solved_problems_plots_split_tol(df, 'miplib')
 gen_total_solved_problems_table_split_tol(df, 'miplib', PAR)
 
+######################################################################
+
 # bisco vs mp vs scs on MITTELMANN (JOIN MDHG/MP WITH SCS)
 df_pdhg_mp = pd.read_csv('mittelmann_pdhg_mp_1h.csv')
 df_pdhg_mp = fill_in_missing_problems(df_pdhg_mp, mittelmann_instances)
@@ -292,11 +319,15 @@ df = pd.concat((df_pdhg_mp, df_scs))
 gen_solved_problems_plots_split_tol(df, 'mittelmann')
 gen_total_solved_problems_table_split_tol(df, 'mittelmann', PAR)
 
+######################################################################
+
 # bisco presolve vs no presolve (JOIN DEFAULT)
 df = pd.read_csv('miplib_nopresolve_100k.csv')
 df = pd.concat((df_default, df))
 gen_solved_problems_plots_split_tol(df, 'miplib_presolve')
 gen_total_solved_problems_table_split_tol(df, 'miplib_presolve', PAR)
+
+######################################################################
 
 # bisco scaling vs no scaling (NO JOIN DEFAULT)
 df = pd.read_csv('miplib_scaling_100k.csv')
@@ -306,21 +337,43 @@ df = pd.concat(df[df['experiment_label'].str.contains(e)] for e in SCALING_EXPS_
 gen_solved_problems_plots_split_tol(df, 'miplib_scaling')
 gen_total_solved_problems_table_split_tol(df, 'miplib_scaling', PAR)
 
-
-# # bisco test two scaling settings
-# df = pd.read_csv('miplib_scaling_100k.csv')
-# df = fill_in_missing_problems(df, miplib_instances)
-# l0 = '1e-4,10 rounds,pock_chambolle alpha=1,miplib_scaling_100k'
-# l1 = '1e-4,10 rounds,l2,miplib_scaling_100k'
-# df = df[(df['experiment_label'] == l0) | (df['experiment_label'] == l1)]
-# gen_solved_problems_plots_split_tol(df, 'miplib_new_default')
-# gen_total_solved_problems_table_split_tol(df, 'miplib_new_default', PAR)
-# gen_ratio_histograms_split_tol(df, 'miplib_new_default', PAR)
-
+######################################################################
 
 # bisco restart vs no restart (NO JOIN DEFAULT)
 df = pd.read_csv('miplib_restarts_100k.csv')
 df = fill_in_missing_problems(df, miplib_instances)
 gen_solved_problems_plots_split_tol(df, 'miplib_restarts')
 gen_total_solved_problems_table_split_tol(df, 'miplib_restarts', PAR)
+
+######################################################################
+
+# bisco adaptive stepsize vs fixed stepsize (NO JOIN DEFAULT)
+df = pd.read_csv('miplib_stepsize_100k.csv')
+df = fill_in_missing_problems(df, miplib_instances)
+gen_solved_problems_plots_split_tol(df, 'miplib_stepsize')
+gen_total_solved_problems_table_split_tol(df, 'miplib_stepsize', PAR)
+
+######################################################################
+
+# bisco primalweight (NO JOIN DEFAULT)
+df = pd.read_csv('miplib_primalweight_100k.csv')
+df = fill_in_missing_problems(df, miplib_instances)
+
+df_fixed = df[df['experiment_label'].str.contains('Fixed')]
+
+# Pull out best performing fixed weight for each instance / tolerance:
+df_best_fixed = df_fixed[df_fixed['termination_reason'] == OPT].reset_index()
+best_idxs = df_best_fixed.groupby(['instance_name', 'tolerance'])['cumulative_kkt_matrix_passes'].idxmin()
+df_best_fixed = df_best_fixed.loc[best_idxs]
+
+for t in df_best_fixed['tolerance'].unique():
+    # rename the experiment label
+    df_best_fixed.loc[df_best_fixed['tolerance'] == t, 'experiment_label'] = \
+        f'primalweight {_BEST_STR} {t}'
+
+df_best_fixed = fill_in_missing_problems(df_best_fixed, miplib_instances)
+df = pd.concat(df[df['experiment_label'].str.contains(e)] for e in PRIMALWEIGHT_EXPS_TO_USE)
+df = pd.concat((df, df_best_fixed))
+gen_solved_problems_plots_split_tol(df, 'miplib_primalweight')
+gen_total_solved_problems_table_split_tol(df, 'miplib_primalweight', PAR)
 
