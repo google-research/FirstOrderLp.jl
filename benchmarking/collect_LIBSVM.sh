@@ -18,9 +18,8 @@ mkdir -p "${DEST_DIR}" || exit 1
 
 # To download the binary problems:
 data_source="https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary"
-for filename in kdda.t real-sim avazu-app.val;
-do
-    curl $data_source/$filename.bz2 --output "${TEMP_DIR}/$filename.bz2"
+for filename in kdda.t real-sim avazu-app.val; do
+    curl "${data_source}/${filename}.bz2" --output "${TEMP_DIR}/${filename}.bz2" || exit 1
     bunzip2 -d "${TEMP_DIR}/${filename}.bz2"
     mv "${TEMP_DIR}/${filename}" "${DEST_DIR}/${filename}"
 done
