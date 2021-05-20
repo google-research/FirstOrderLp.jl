@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Generates a Linear Programming model for solving an L1 SVM problem from the
+# Generates a Linear Programming model for solving an L1 SVM binary classification problem from the
 # LIBSVM repository.
 
 # Sample usage:
@@ -36,9 +36,7 @@ const sparse = SparseArrays.sparse
 const norm = LinearAlgebra.norm
 const Diagonal = LinearAlgebra.Diagonal
 
-include("utils.jl")
-
-mutable struct SvmTrainigData
+mutable struct SvmTrainingData
   feature_matrix::SparseMatrixCSC{Float64,Int64}
   labels::Vector{Float64}
 end
@@ -54,7 +52,7 @@ problem with training set (X, y). The model is given by
 """
 function populate_libsvm_model(
   model::JuMP.Model,
-  data::SvmTrainigData,
+  data::SvmTrainingData,
   regularizer_weight::Float64,
 )
   n, d = size(data.feature_matrix)
@@ -102,7 +100,7 @@ function parse_command_line()
 end
 
 """
-Loads a LIBSVM file and returns a loaded SvmTrainigData struct.
+Loads a LIBSVM file and returns the loaded SvmTrainingData struct.
 """
 function load_libsvm_file(file_name::String)
   open(file_name, "r") do io
@@ -133,7 +131,7 @@ function load_libsvm_file(file_name::String)
       end
     end
     feature_matrix = sparse(row_indices, col_indices, matrix_values)
-    return SvmTrainigData(feature_matrix, labels)
+    return SvmTrainingData(feature_matrix, labels)
   end
 end
 
@@ -144,7 +142,7 @@ function normalize_columns(feature_matrix::SparseMatrixCSC{Float64,Int64})
 end
 
 function remove_empty_columns(feature_matrix::SparseMatrixCSC{Float64,Int64})
-  keep_cols = Array{Int64,1}()
+  keep_cols = Vector{Int64}()
   for j in 1:size(feature_matrix, 2)
     if length(feature_matrix[:, j].nzind) > 0
       push!(keep_cols, j)
@@ -158,7 +156,7 @@ function add_intercept(feature_matrix::SparseMatrixCSC{Float64,Int64})
 end
 
 
-function preprocess_training_data(result::SvmTrainigData)
+function preprocess_training_data(result::SvmTrainingData)
   result.feature_matrix = remove_empty_columns(result.feature_matrix)
   result.feature_matrix = add_intercept(result.feature_matrix)
   result.feature_matrix = normalize_columns(result.feature_matrix)
