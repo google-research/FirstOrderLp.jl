@@ -118,7 +118,7 @@ function load_libsvm_file(file_name::String)
 
       label = parse(Float64, split_line[1])
       # This ensures that labels are 1 or -1. Different datasets use {-1, 1}, {0, 1}, and {1, 2}.
-      if label == 1.0 && !found_label_one
+      if label == 1.0
         found_label_one = true
       else
         label = -1.0
