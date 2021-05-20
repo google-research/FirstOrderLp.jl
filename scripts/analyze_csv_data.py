@@ -14,17 +14,20 @@
 
 # TODO
 
-
+import os
 import numpy as np
 import scipy.stats
 import pandas as pd
 import matplotlib.pyplot as plt
 plt.rcParams.update({'figure.max_open_warning': 0})
 
+# directory where all the figure pdf and table tex files are written to:
+OUTPUT_DIR = './results'
+
 OPT = 'TERMINATION_REASON_OPTIMAL'
 KKT_PASSES_LIMIT = 1e5
 TIME_LIMIT_SECS = 60 * 60 # 1hr
-# shift to use for shifted geomentric mean
+# shift to use for shifted geometric mean
 SGM_SHIFT = int(10)
 # penalised average runtime:
 PAR = 2. # can be None, which removes unsolved instead of penalizing
@@ -69,11 +72,11 @@ def label_lookup(label):
         return 'PLOP'
     if 'off,off' in label:
         return 'No scaling'
-    if r'off,pock_chambolle ($\alpha=1$)' in label:
+    if 'off,pock_chambolle alpha=1' in label:
         return 'Pock-Chambolle'
     if '10 rounds,off' in label:
         return 'Ruiz'
-    if r'10 rounds,pock_chambolle ($\alpha=1$)' in label:
+    if '10 rounds,pock_chambolle alpha=1' in label:
         return 'Ruiz + Pock-Chambolle'
     if 'stepsize' in label:
         if 'adaptive' in label:
@@ -109,7 +112,7 @@ def solved_problems_vs_xaxis_figs(dfs, xaxis, xlabel, prefix):
     plt.xlabel(xlabel)
     plt.legend(loc='best')
     # plt.legend(bbox_to_anchor=(1.04, 0.5), loc='center left')
-    plt.savefig(f'{prefix}_{xaxis}_v_solved_probs.pdf', bbox_inches = "tight")
+    plt.savefig(f'{OUTPUT_DIR}/{prefix}_{xaxis}_v_solved_probs.pdf', bbox_inches = "tight")
 
 
 def gen_solved_problems_plots(df, prefix):
@@ -186,7 +189,7 @@ def gen_total_solved_problems_table(df, prefix, par):
                         caption=f'Performance statistics.',
                         label=f't:solved-probs',
                         column_format='lc')
-    with open(f'{prefix}_solved_probs_table.tex', "w") as f:
+    with open(f'{OUTPUT_DIR}/{prefix}_solved_probs_table.tex', "w") as f:
       f.write(table)
 
 
@@ -247,14 +250,14 @@ def gen_ratio_histograms(df, prefix, par):
     plt.figure()
     plt.title(f'({label_lookup(l0)}):({label_lookup(l1)})')
     plot_loghist(ratios['ratio'], 25)
-    plt.savefig(f'{prefix}_performance_ratio.pdf')
+    plt.savefig(f'{OUTPUT_DIR}/{prefix}_performance_ratio.pdf')
     table = ratios.to_latex(float_format="%.2f",
                             longtable=False,
                             index=False,
                             caption=f'Performance_ratio.',
                             label=f't:solved-probs',
                             column_format='lc')
-    with open(f'{prefix}_({label_lookup(l0)}):({label_lookup(l1)})_ratio_table.tex', "w") as f:
+    with open(f'{OUTPUT_DIR}/{prefix}_({label_lookup(l0)}):({label_lookup(l1)})_ratio_table.tex', "w") as f:
       f.write(table)
     shift = 0.
     gmean = shifted_geomean(ratios['ratio'], shift)
@@ -274,6 +277,12 @@ def fill_in_missing_problems(df, instances_list):
         new_df['experiment_label'] = e
         dfs.append(new_df)
     return pd.concat(dfs)
+
+
+# First, make output directory
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+
 
 with open('../benchmarking/miplib2017_instance_list') as f:
     miplib_instances = f.readlines()
