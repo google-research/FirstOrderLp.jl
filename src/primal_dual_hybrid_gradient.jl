@@ -598,7 +598,7 @@ function take_step(
     solver_state.cumulative_kkt_passes += 0.5
 
     # The primal weight does not play a role in this condition. As noted in the
-    # paper (See secont paragrah of Section 2 in https://arxiv.org/pdf/1608.08883.pdf)
+    # paper (See second paragraph of Section 2 in https://arxiv.org/pdf/1608.08883.pdf)
     # the coefficient on left-hand-side is equal to
     # sqrt(<primal_step_size> * <dual_step_size>) = step_size.
     # where the equality follows since the primal_weight in the primal and dual step
