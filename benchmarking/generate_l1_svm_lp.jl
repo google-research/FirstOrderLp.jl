@@ -35,6 +35,7 @@ const SparseMatrixCSC = SparseArrays.SparseMatrixCSC
 const sparse = SparseArrays.sparse
 const norm = LinearAlgebra.norm
 const Diagonal = LinearAlgebra.Diagonal
+const nzrange = SparseArrays.nzrange
 
 mutable struct SvmTrainingData
   feature_matrix::SparseMatrixCSC{Float64,Int64}
@@ -110,14 +111,15 @@ function load_libsvm_file(file_name::String)
     matrix_values = Vector{Float64}()
 
     row_index = 0
+    found_label_one = false
     for line in eachline(io)
       row_index += 1
       split_line = split(line)
 
       label = parse(Float64, split_line[1])
       # This ensures that labels are 1 or -1. Different datasets use {-1, 1}, {0, 1}, and {1, 2}.
-      if label ≈ 1.0
-        label = 1.0
+      if label == 1.0 && !found_label_one
+        found_label_one == true
       else
         label = -1.0
       end
@@ -130,6 +132,7 @@ function load_libsvm_file(file_name::String)
         push!(matrix_values, parse(Float64, matrix_coef[2]))
       end
     end
+    @assert !found_label_one
     feature_matrix = sparse(row_indices, col_indices, matrix_values)
     return SvmTrainingData(feature_matrix, labels)
   end
@@ -144,7 +147,7 @@ end
 function remove_empty_columns(feature_matrix::SparseMatrixCSC{Float64,Int64})
   keep_cols = Vector{Int64}()
   for j in 1:size(feature_matrix, 2)
-    if length(feature_matrix[:, j].nzind) > 0
+    if length(nzrange(feature_matrix, j)) > 0
       push!(keep_cols, j)
     end
   end
