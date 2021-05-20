@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Generates a Linear Programming model for solving an L1 SVM binary classification problem from the
-# LIBSVM repository.
+# Generates a Linear Programming model for solving an L1 SVM binary
+# classification problem from the LIBSVM repository.
 
 # Sample usage:
 # $ julia --project=. generate_l1_svm_lp.jl --input_filename=../data/duke.tr
