@@ -54,7 +54,8 @@ function populate_pagerank_model(
   degrees = [length(LightGraphs.neighbors(graph, i)) for i in 1:num_nodes]
   JuMP.@variable(model, x[i = 1:num_nodes], lower_bound = 0.0)
   for i in 1:num_nodes
-    transition_sum = @expression(
+    transition_sum = JuMP.@expression(
+      model,
       sum(x[j] / degrees[j] for j in LightGraphs.neighbors(graph, i))
     )
     JuMP.@constraint(
