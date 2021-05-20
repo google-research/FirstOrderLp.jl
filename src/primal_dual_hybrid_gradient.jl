@@ -624,8 +624,9 @@ function take_step(
         next_dual_product,
       )
       done = true
+    else
+      step_size *= step_params.downscaling_factor
     end
-    step_size *= step_params.downscaling_factor
   end
   if iter == max_iter && !done
     solver_state.numerical_error = true
