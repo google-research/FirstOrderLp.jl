@@ -721,7 +721,9 @@ function optimize(
       cumulative_kkt_passes += KKT_PASSES_PER_TERMINATION_EVALUATION
 
       # Compute the average solution since the last restart point.
-      if numerical_error || solution_weighted_avg.sum_solutions_count == 0
+      if numerical_error ||
+         solution_weighted_avg.sum_primal_solutions_count == 0 ||
+         solution_weighted_avg.sum_dual_solutions_count == 0
         avg_primal_solution = primal_part(current_solution)
         avg_dual_solution = dual_part(current_solution)
       else
