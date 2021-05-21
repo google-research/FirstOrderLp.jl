@@ -605,8 +605,18 @@ function take_step(
     # sizes cancel out.
     if step_size * norm(delta_dual_product) <=
        step_params.breaking_factor * norm(delta_dual)
-      # TODO: Implement nonsymmetric weighted average (See Theorem 2 of
-      # https://arxiv.org/pdf/1608.08883.pdf)
+      # Malitsky and Pock guarantee uses a nonsymmetric weighted average, the
+      # primal variable average involves the initial point, while the dual
+      # doesn't. See Theorem 2 in https://arxiv.org/pdf/1608.08883.pdf for
+      # details.
+      if solver_state.solution_weighted_avg.sum_primal_solutions_count == 0
+        add_to_primal_solution_weighted_average(
+          solver_state.solution_weighted_avg,
+          solver_state.current_primal_solution,
+          step_size * ratio_step_sizes,
+        )
+      end
+
       update_solution_in_solver_state(
         solver_state,
         next_primal,
@@ -877,7 +887,8 @@ function optimize(
         KKT_PASSES_PER_TERMINATION_EVALUATION
       # Compute the average solution since the last restart point.
       if solver_state.numerical_error ||
-         solver_state.solution_weighted_avg.sum_solutions_count == 0
+         solver_state.solution_weighted_avg.sum_primal_solutions_count == 0 ||
+         solver_state.solution_weighted_avg.sum_dual_solutions_count == 0
         avg_primal_solution = solver_state.current_primal_solution
         avg_dual_solution = solver_state.current_dual_solution
       else

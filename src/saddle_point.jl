@@ -215,15 +215,24 @@ end
 mutable struct SolutionWeightedAverage
   sum_primal_solutions::Vector{Float64}
   sum_dual_solutions::Vector{Float64}
-  sum_solutions_count::Int64
-  sum_solution_weights::Float64
+  sum_primal_solutions_count::Int64
+  sum_dual_solutions_count::Int64
+  sum_primal_solution_weights::Float64
+  sum_dual_solution_weights::Float64
 end
 
 function initialize_solution_weighted_average(
   primal_size::Int64,
   dual_size::Int64,
 )
-  return SolutionWeightedAverage(zeros(primal_size), zeros(dual_size), 0, 0.0)
+  return SolutionWeightedAverage(
+    zeros(primal_size),
+    zeros(dual_size),
+    0,
+    0,
+    0.0,
+    0.0,
+  )
 end
 
 function reset_solution_weighted_average(
@@ -233,8 +242,35 @@ function reset_solution_weighted_average(
     zeros(length(solution_weighted_avg.sum_primal_solutions))
   solution_weighted_avg.sum_dual_solutions =
     zeros(length(solution_weighted_avg.sum_dual_solutions))
-  solution_weighted_avg.sum_solutions_count = 0
-  solution_weighted_avg.sum_solution_weights = 0.0
+  solution_weighted_avg.sum_primal_solutions_count = 0
+  solution_weighted_avg.sum_dual_solutions_count = 0
+  solution_weighted_avg.sum_primal_solution_weights = 0.0
+  solution_weighted_avg.sum_dual_solution_weights = 0.0
+  return
+end
+
+function add_to_primal_solution_weighted_average(
+  solution_weighted_avg::SolutionWeightedAverage,
+  current_primal_solution::AbstractVector{Float64},
+  weight::Float64,
+)
+  @assert solution_weighted_avg.sum_primal_solutions_count >= 0
+  solution_weighted_avg.sum_primal_solutions .+=
+    current_primal_solution * weight
+  solution_weighted_avg.sum_primal_solutions_count += 1
+  solution_weighted_avg.sum_primal_solution_weights += weight
+  return
+end
+
+function add_to_dual_solution_weighted_average(
+  solution_weighted_avg::SolutionWeightedAverage,
+  current_dual_solution::AbstractVector{Float64},
+  weight::Float64,
+)
+  @assert solution_weighted_avg.sum_dual_solutions_count >= 0
+  solution_weighted_avg.sum_dual_solutions .+= current_dual_solution * weight
+  solution_weighted_avg.sum_dual_solutions_count += 1
+  solution_weighted_avg.sum_dual_solution_weights += weight
   return
 end
 
@@ -244,20 +280,24 @@ function add_to_solution_weighted_average(
   current_dual_solution::AbstractVector{Float64},
   weight::Float64,
 )
-  @assert solution_weighted_avg.sum_solutions_count >= 0
-  solution_weighted_avg.sum_primal_solutions .+=
-    current_primal_solution * weight
-  solution_weighted_avg.sum_dual_solutions .+= current_dual_solution * weight
-  solution_weighted_avg.sum_solutions_count += 1
-  solution_weighted_avg.sum_solution_weights += weight
+  add_to_primal_solution_weighted_average(
+    solution_weighted_avg,
+    current_primal_solution,
+    weight,
+  )
+  add_to_dual_solution_weighted_average(
+    solution_weighted_avg,
+    current_dual_solution,
+    weight,
+  )
   return
 end
 
 function compute_average(solution_weighted_avg::SolutionWeightedAverage)
   return solution_weighted_avg.sum_primal_solutions /
-         solution_weighted_avg.sum_solution_weights,
+         solution_weighted_avg.sum_primal_solution_weights,
   solution_weighted_avg.sum_dual_solutions /
-  solution_weighted_avg.sum_solution_weights
+  solution_weighted_avg.sum_dual_solution_weights
 end
 
 """
@@ -655,14 +695,15 @@ function run_restart_scheme(
 )
   # TODO: Add options for the purposes of benchmarking, e.g., use the
   # last iterate instead of the average, or average across all iterates.
-  if solution_weighted_avg.sum_solutions_count > 0
+  if solution_weighted_avg.sum_primal_solutions_count > 0 &&
+     solution_weighted_avg.sum_dual_solutions_count > 0
     avg_primal_solution, avg_dual_solution =
       compute_average(solution_weighted_avg)
   else
     return RESTART_CHOICE_NO_RESTART
   end
 
-  restart_length = solution_weighted_avg.sum_solutions_count
+  restart_length = solution_weighted_avg.sum_primal_solutions_count
   artificial_restart = false
   do_restart = false
   # If we have not restarted for a very long time (as a fraction of the
