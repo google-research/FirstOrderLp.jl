@@ -28,12 +28,12 @@ $ ./preprocess.sh ~/miplib2017_collection ./miplib2017_instance_list \
 
 ## Preprocessed Mittelmann benchmark dataset
 
-This benchmark contains the union of the instances from Hans Mittelmann's 
+This benchmark contains the union of the instances from Hans Mittelmann's
 [Benchmark of Simplex LP Solvers](http://plato.asu.edu/ftp/lpsimp.html),
 [Benchmark of Barrier LP Solvers](http://plato.asu.edu/ftp/lpbar.html), and
 [Large Network-LP Benchmark (commercial vs
  free)](http://plato.asu.edu/ftp/network.html).
- 
+
 1. From the local directory, instantiate the necessary packages by running
    `julia --project=. -e 'import Pkg; Pkg.instantiate()'`.
 2. Download the benchmark instances. Either run
@@ -49,6 +49,26 @@ PaPILO,
 $ ./collect_mittelmann_benchmark.sh /tmp ~/mittelmann_benchmark
 $ ./preprocess.sh ~/mittelmann_benchmark ./mittelmann_instance_list \
     ~/mittelmann_preprocessed ~/PaPILO/build/bin/papilo
+```
+
+## L1 SVM
+
+The L1 SVM instances apply the formulation from equation (5) in "1-norm Support
+Vector Machines" by J. Zhu et al. (NIPS, 2003.
+https://papers.nips.cc/paper/2003/file/49d4b2faeb4b7b9e745775793141e2b2-Paper.pdf).
+
+1. From the local directory, instantiate the necessary packages by running
+   `julia --project=. -e 'import Pkg; Pkg.instantiate()'`.
+2. Download the benchmark instances. Either run
+   `./collect_LIBSVM.sh` .
+3. Generate the instances by running `generate_l1_svm_lp.jl`.
+
+For example,
+
+```sh
+$ ./collect_LIBSVM.sh /tmp ~/LIBSVM
+$ julia --project=. generate_l1_svm_lp.jl --input_filename=~/LIBSVM/duke \
+	  --output_filename=~/LIBSVM/duke.mps.gz --regularizer_weight=1.0
 ```
 
 ## Pagerank instances
