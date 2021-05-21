@@ -351,6 +351,11 @@ mutable struct RestartParameters
   """
   primal_weight_update_smoothing::Float64
 
+  """
+  Use an approximate localized duality gap for restart computations. The
+  approximate gap only enforces bounds on variables that are active at the
+  center point and objective.
+  """
   use_approximate_localized_duality_gap::Bool
 end
 
