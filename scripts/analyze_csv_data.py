@@ -35,7 +35,7 @@ TIME_LIMIT_SECS = 60 * 60  # 1hr
 # shift to use for shifted geometric mean
 SGM_SHIFT = int(10)
 # penalised average runtime:
-PAR = 2.  # can be None, which removes unsolved instead of penalizing
+PAR = 1.  # can be None, which removes unsolved instead of penalizing
 
 SCALING_EXPS_TO_USE = [
     'off,off',
@@ -56,7 +56,7 @@ _BEST_STR = '_best_str_'
 # Horrible HACK, but needs to be done
 def label_lookup(label):
     if 'pdhg_enhanced' in label:
-        return 'PLOP'
+        return 'PDLP'
     if 'mirror-prox' in label:
         return 'Mirror Prox'
     if 'pdhg_vanilla' in label:
@@ -72,9 +72,9 @@ def label_lookup(label):
     if 'adaptive theoretical' in label:
         return 'Adaptive restart (theory)'
     if 'adaptive enhanced' in label:
-        return 'PLOP'
+        return 'PDLP'
     if 'pdhg' in label and 'pdhg_mp_1h' in label:
-        return 'PLOP'
+        return 'PDLP'
     if 'off,off' in label:
         return 'No scaling'
     if 'off,pock_chambolle alpha=1' in label:
@@ -85,22 +85,42 @@ def label_lookup(label):
         return 'Ruiz + Pock-Chambolle'
     if 'stepsize' in label:
         if 'adaptive' in label:
-            return 'PLOP'
+            return 'PDLP'
         if 'fixed' in label:
             return 'Fixed step-size'
     if 'primalweight' in label:
         if 'adaptive' in label:
-            return 'PLOP'
+            return 'PDLP'
         if 'Fixed 1e-0' in label:
             return r'Fixed primal weight ($\theta=0$)'
         if _BEST_STR in label:
             return 'Best per-instance fixed primal weight'
+    if 'improvements' in label:
+        if 'vanilla' in label:
+            return 'PDHG'
+        st = ''
+        if 'restarts' in label:
+            st = '+ restarts'
+        if 'scaling' in label:
+            st = '+ scaling'
+        if 'primal weight' in label:
+            st = '+ primal weight'
+        if 'step size' in label:
+            st = '+ step-size'
+        return st
     return label
+
 
 def sanitize_title(title):
     return title.replace('_', ' ').title()
 
-def solved_problems_vs_xaxis_figs(dfs, xaxis, xlabel, prefix):
+
+def solved_problems_vs_xaxis_figs(
+        dfs,
+        xaxis,
+        xlabel,
+        prefix,
+        outer_legend=False):
     plt.figure()
     for k, df_k in dfs.items():
         stats_df = df_k.groupby(xaxis)[xaxis] \
@@ -116,31 +136,42 @@ def solved_problems_vs_xaxis_figs(dfs, xaxis, xlabel, prefix):
 
     plt.ylabel('Number of problems solved')
     plt.xlabel(xlabel)
-    plt.legend(loc='best')
     plt.title(sanitize_title(prefix))
-    # plt.legend(bbox_to_anchor=(1.04, 0.5), loc='center left')
+    if outer_legend:
+        plt.legend(bbox_to_anchor=(1.04, 0.5), loc='center left')
+    else:
+        plt.legend(loc='best')
     path = os.path.join(FIGS_DIR, f'{prefix}_{xaxis}_v_solved_probs.pdf')
     plt.savefig(
         path,
         bbox_inches="tight")
 
 
-def gen_solved_problems_plots(df, prefix):
+def gen_solved_problems_plots(df, prefix, outer_legend=False):
     exps = df['experiment_label'].unique()
     dfs = {k: df[df['experiment_label'] == k] for k in exps}
     optimal_dfs = {k: v[v['termination_reason'] == OPT]
                    for (k, v) in dfs.items()}
 
-    solved_problems_vs_xaxis_figs(optimal_dfs, 'cumulative_kkt_matrix_passes',
-                                  'Cumulative KKT matrix passes', prefix)
-    solved_problems_vs_xaxis_figs(optimal_dfs, 'solve_time_sec',
-                                  'Wall-clock time (secs)', prefix)
+    solved_problems_vs_xaxis_figs(
+        optimal_dfs,
+        'cumulative_kkt_matrix_passes',
+        'Cumulative KKT matrix passes',
+        prefix,
+        outer_legend)
+    solved_problems_vs_xaxis_figs(
+        optimal_dfs,
+        'solve_time_sec',
+        'Wall-clock time (secs)',
+        prefix,
+        outer_legend)
 
 
-def gen_solved_problems_plots_split_tol(df, prefix):
+def gen_solved_problems_plots_split_tol(df, prefix, outer_legend=False):
     tols = df['tolerance'].unique()
     for t in tols:
-        gen_solved_problems_plots(df[df['tolerance'] == t], prefix + f'_tolerance:{t:.1E}')
+        gen_solved_problems_plots(
+            df[df['tolerance'] == t], prefix + f'_tolerance:{t:.1E}', outer_legend)
 
 
 def shifted_geomean(x, shift):
@@ -189,9 +220,9 @@ def gen_total_solved_problems_table(df, prefix, par):
                        != OPT, 'solve_time_sec'] = np.nan
 
     wall_clock = wall_clock.groupby('experiment_label')['solve_time_sec'] \
-        .agg(np.nanmean) \
+        .agg(lambda _: shifted_geomean(_, shift)) \
         .pipe(pd.DataFrame) \
-        .rename(columns={'solve_time_sec': f'Mean solve time secs'})
+        .rename(columns={'solve_time_sec': f'Solve time secs SGM10'})
     wall_clock.index.name = 'Experiment'
     wall_clock = wall_clock.reset_index()
 
@@ -200,22 +231,27 @@ def gen_total_solved_problems_table(df, prefix, par):
     for e in output['Experiment']:
         output.loc[output['Experiment'] == e, 'Experiment'] = label_lookup(e)
 
-    table = output.to_latex(float_format="%.1f",
-                            longtable=False,
-                            index=False,
-                            caption=f'Performance statistics: {sanitize_title(prefix)}',
-                            label=f't:solved-probs',
-                            column_format='lccc')
+    table = output.to_latex(
+        float_format="%.1f",
+        longtable=False,
+        index=False,
+        caption=f'Performance statistics: {sanitize_title(prefix)}',
+        label=f't:solved-probs',
+        column_format='lccc',
+        escape=False)
     path = os.path.join(TEX_DIR, f'{prefix}_solved_probs_table.tex')
     with open(path, "w") as f:
         f.write(table)
+    return output
 
 
 def gen_total_solved_problems_table_split_tol(df, prefix, par):
+    outputs = {}
     tols = df['tolerance'].unique()
     for t in tols:
-        gen_total_solved_problems_table(
+        outputs[t] = gen_total_solved_problems_table(
             df[df['tolerance'] == t], prefix + f'_tolerance:{t:.1E}', par)
+    return outputs
 
 
 def plot_loghist(x, nbins):
@@ -229,7 +265,8 @@ def plot_loghist(x, nbins):
 def gen_ratio_histograms_split_tol(df, prefix, par):
     tols = df['tolerance'].unique()
     for t in tols:
-        gen_ratio_histograms(df[df['tolerance'] == t], prefix + f'_tolerance:{t:.1E}', par)
+        gen_ratio_histograms(df[df['tolerance'] == t],
+                             prefix + f'_tolerance:{t:.1E}', par)
 
 
 def gen_ratio_histograms(df, prefix, par):
@@ -332,13 +369,13 @@ df_default = fill_in_missing_problems(df_default, miplib_instances)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_pdhg_vanilla_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
 df = pd.concat((df_default, df))
-gen_solved_problems_plots_split_tol(df, 'miplib_PLOP_v_vanilla')
-gen_total_solved_problems_table_split_tol(df, 'miplib_PLOP_v_vanilla', PAR)
-gen_ratio_histograms_split_tol(df, 'miplib_PLOP_v_vanilla', PAR)
+gen_solved_problems_plots_split_tol(df, 'miplib_PDLP_v_vanilla')
+gen_total_solved_problems_table_split_tol(df, 'miplib_PDLP_v_vanilla', PAR)
+gen_ratio_histograms_split_tol(df, 'miplib_PDLP_v_vanilla', PAR)
 
 ######################################################################
 
-# bisco vs mp vs scs on MIPLIB (JOIN MDHG/MP WITH SCS)
+# bisco vs mp vs scs on MIPLIB (JOIN PDHG/MP WITH SCS)
 df_pdhg_mp = pd.read_csv(os.path.join(CSV_DIR, 'miplib_pdhg_mp_1h.csv'))
 df_pdhg_mp = fill_in_missing_problems(df_pdhg_mp, miplib_instances)
 df_scs = pd.read_csv(os.path.join(CSV_DIR, 'miplib_scs_1h.csv'))
@@ -349,7 +386,7 @@ gen_total_solved_problems_table_split_tol(df, 'miplib', PAR)
 
 ######################################################################
 
-# bisco vs mp vs scs on MITTELMANN (JOIN MDHG/MP WITH SCS)
+# bisco vs mp vs scs on MITTELMANN (JOIN PDHG/MP WITH SCS)
 df_pdhg_mp = pd.read_csv(os.path.join(CSV_DIR, 'mittelmann_pdhg_mp_1h.csv'))
 df_pdhg_mp = fill_in_missing_problems(df_pdhg_mp, mittelmann_instances)
 df_scs = pd.read_csv(os.path.join(CSV_DIR, 'mittelmann_scs_1h.csv'))
@@ -418,3 +455,83 @@ df = pd.concat(df[df['experiment_label'].str.contains(e)]
 df = pd.concat((df, df_best_fixed))
 gen_solved_problems_plots_split_tol(df, 'miplib_(primalweight)')
 gen_total_solved_problems_table_split_tol(df, 'miplib_(primalweight)', PAR)
+
+
+######################################################################
+
+# bisco ablate improvements (JOIN DEFAULT)
+df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_improvements_100k.csv'))
+df = pd.concat((df, df_default))
+df = fill_in_missing_problems(df, miplib_instances)
+gen_solved_problems_plots_split_tol(df, 'miplib_(improvements)', True)
+outputs = gen_total_solved_problems_table_split_tol(
+    df, 'miplib_(improvements)', PAR)
+
+def improvements_plot(dfs, prefix, key, ascending):
+    normalized_dfs = []
+    for df in dfs:
+        df = df.sort_values(key, ascending=ascending)
+        df[key] = df[key] / (df[key].min() if ascending else df[key].max())
+        normalized_dfs.append(df)
+    df = pd.concat(normalized_dfs)
+    df.set_index('Experiment', inplace=True)
+    fig, ax = plt.subplots()
+    for tol in df['tolerance'].unique():
+        df[df['tolerance'] == tol].plot(ax=ax,
+                legend=True, y=key,
+                label=f'tolerance {tol:.1E}',
+                ylabel=key, figsize=(10, 6),
+                title=sanitize_title(prefix),
+                xlabel='Improvement', logy=True)
+    if len(dfs) == 1:
+        ax.get_legend().remove()
+    name = key.replace(' ', '_')
+    path = os.path.join(FIGS_DIR, f'{prefix}_{name}.pdf')
+    plt.savefig(
+        path,
+        bbox_inches="tight")
+
+for tol, df in outputs.items():
+    df = df.copy()
+    df['tolerance'] = tol
+    improvements_plot(
+        (df,),
+        'miplib_(improvements)' +
+        f'_tolerance:{tol:.1E}',
+        'KKT passes SGM10',
+        ascending=False)
+    improvements_plot(
+        (df,),
+        'miplib_(improvements)' +
+        f'_tolerance:{tol:.1E}',
+        'Solve time secs SGM10',
+        ascending=False)
+    improvements_plot(
+        (df,),
+        'miplib_(improvements)' +
+        f'_tolerance:{tol:.1E}',
+        'Solved count',
+        ascending=True)
+
+dfs = []
+for tol, df in outputs.items():
+    df = df.copy()
+    df['tolerance'] = tol
+    dfs.append(df)
+improvements_plot(
+    dfs,
+    'miplib_(improvements)',
+    'KKT passes SGM10',
+    ascending=False)
+improvements_plot(
+    dfs,
+    'miplib_(improvements)',
+    'Solve time secs SGM10',
+    ascending=False)
+improvements_plot(
+    dfs,
+    'miplib_(improvements)',
+    'Solved count',
+    ascending=True)
+
+
