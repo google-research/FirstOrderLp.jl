@@ -663,12 +663,12 @@ accordingly.
    this struct will be reset to the restart point.
 - `current_primal_solution::AbstractVector`: If there is a restart then this
    vector might be set to the avg_primal_solution. However, it could remain
-   unchanged, if the algorithm thinks the averaged iterate is better than the
-   current iterate.
+   unchanged, if the algorithm thinks the current iterate is better than the
+   averaged iterate.
 - `current_dual_solution::AbstractVector`: If there is a restart then this
    vector might be set to the avg_dual_solution. However, it could remain
-   unchanged, if the algorithm thinks the averaged iterate is better than the
-   current iterate.
+   unchanged, if the algorithm thinks the current iterate is better than the
+   averaged iterate.
 - `last_restart_info::RestartInfo`: Information stored about the last
    restart point.
 - `iterations_completed::Int64`: The number of successful iterations completed
