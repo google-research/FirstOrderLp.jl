@@ -97,6 +97,8 @@ def label_lookup(label):
             return 'Best per-instance fixed primal weight'
     return label
 
+def sanitize_title(title):
+    return title.replace('_', ' ').title()
 
 def solved_problems_vs_xaxis_figs(dfs, xaxis, xlabel, prefix):
     plt.figure()
@@ -115,6 +117,7 @@ def solved_problems_vs_xaxis_figs(dfs, xaxis, xlabel, prefix):
     plt.ylabel('Number of problems solved')
     plt.xlabel(xlabel)
     plt.legend(loc='best')
+    plt.title(sanitize_title(prefix))
     # plt.legend(bbox_to_anchor=(1.04, 0.5), loc='center left')
     path = os.path.join(FIGS_DIR, f'{prefix}_{xaxis}_v_solved_probs.pdf')
     plt.savefig(
@@ -137,7 +140,7 @@ def gen_solved_problems_plots(df, prefix):
 def gen_solved_problems_plots_split_tol(df, prefix):
     tols = df['tolerance'].unique()
     for t in tols:
-        gen_solved_problems_plots(df[df['tolerance'] == t], prefix + f'_{t}')
+        gen_solved_problems_plots(df[df['tolerance'] == t], prefix + f'_tolerance:{t:.1E}')
 
 
 def shifted_geomean(x, shift):
@@ -196,11 +199,13 @@ def gen_total_solved_problems_table(df, prefix, par):
     # rename the labels
     for e in output['Experiment']:
         output.loc[output['Experiment'] == e, 'Experiment'] = label_lookup(e)
-    table = output.to_latex(float_format="%.1f", longtable=False,
+
+    table = output.to_latex(float_format="%.1f",
+                            longtable=False,
                             index=False,
-                            caption=f'Performance statistics.',
+                            caption=f'Performance statistics: {sanitize_title(prefix)}',
                             label=f't:solved-probs',
-                            column_format='lc')
+                            column_format='lccc')
     path = os.path.join(TEX_DIR, f'{prefix}_solved_probs_table.tex')
     with open(path, "w") as f:
         f.write(table)
@@ -210,7 +215,7 @@ def gen_total_solved_problems_table_split_tol(df, prefix, par):
     tols = df['tolerance'].unique()
     for t in tols:
         gen_total_solved_problems_table(
-            df[df['tolerance'] == t], prefix + f'_{t}', par)
+            df[df['tolerance'] == t], prefix + f'_tolerance:{t:.1E}', par)
 
 
 def plot_loghist(x, nbins):
@@ -224,7 +229,7 @@ def plot_loghist(x, nbins):
 def gen_ratio_histograms_split_tol(df, prefix, par):
     tols = df['tolerance'].unique()
     for t in tols:
-        gen_ratio_histograms(df[df['tolerance'] == t], prefix + f'_{t}', par)
+        gen_ratio_histograms(df[df['tolerance'] == t], prefix + f'_tolerance:{t:.1E}', par)
 
 
 def gen_ratio_histograms(df, prefix, par):
@@ -270,7 +275,7 @@ def gen_ratio_histograms(df, prefix, par):
     table = ratios.to_latex(float_format="%.2f",
                             longtable=False,
                             index=False,
-                            caption=f'Performance_ratio.',
+                            caption=f'Performance ratio.',
                             label=f't:solved-probs',
                             column_format='lc')
     path = os.path.join(TEX_DIR, f'{prefix}_({label_lookup(l0)}):'
@@ -327,9 +332,9 @@ df_default = fill_in_missing_problems(df_default, miplib_instances)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_pdhg_vanilla_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
 df = pd.concat((df_default, df))
-gen_solved_problems_plots_split_tol(df, 'miplib_defaults_v_vanilla')
-gen_total_solved_problems_table_split_tol(df, 'miplib_defaults_v_vanilla', PAR)
-gen_ratio_histograms_split_tol(df, 'miplib_defaults_v_vanilla', PAR)
+gen_solved_problems_plots_split_tol(df, 'miplib_PLOP_v_vanilla')
+gen_total_solved_problems_table_split_tol(df, 'miplib_PLOP_v_vanilla', PAR)
+gen_ratio_histograms_split_tol(df, 'miplib_PLOP_v_vanilla', PAR)
 
 ######################################################################
 
@@ -358,8 +363,8 @@ gen_total_solved_problems_table_split_tol(df, 'mittelmann', PAR)
 # bisco presolve vs no presolve (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_nopresolve_100k.csv'))
 df = pd.concat((df_default, df))
-gen_solved_problems_plots_split_tol(df, 'miplib_presolve')
-gen_total_solved_problems_table_split_tol(df, 'miplib_presolve', PAR)
+gen_solved_problems_plots_split_tol(df, 'miplib_(presolve)')
+gen_total_solved_problems_table_split_tol(df, 'miplib_(presolve)', PAR)
 
 ######################################################################
 
@@ -369,24 +374,24 @@ df = fill_in_missing_problems(df, miplib_instances)
 # filter out un-needed scaling experiments:
 df = pd.concat(df[df['experiment_label'].str.contains(e)]
                for e in SCALING_EXPS_TO_USE)
-gen_solved_problems_plots_split_tol(df, 'miplib_scaling')
-gen_total_solved_problems_table_split_tol(df, 'miplib_scaling', PAR)
+gen_solved_problems_plots_split_tol(df, 'miplib_(scaling)')
+gen_total_solved_problems_table_split_tol(df, 'miplib_(scaling)', PAR)
 
 ######################################################################
 
 # bisco restart vs no restart (NO JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_restarts_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
-gen_solved_problems_plots_split_tol(df, 'miplib_restarts')
-gen_total_solved_problems_table_split_tol(df, 'miplib_restarts', PAR)
+gen_solved_problems_plots_split_tol(df, 'miplib_(restarts)')
+gen_total_solved_problems_table_split_tol(df, 'miplib_(restarts)', PAR)
 
 ######################################################################
 
 # bisco adaptive stepsize vs fixed stepsize (NO JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_stepsize_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
-gen_solved_problems_plots_split_tol(df, 'miplib_stepsize')
-gen_total_solved_problems_table_split_tol(df, 'miplib_stepsize', PAR)
+gen_solved_problems_plots_split_tol(df, 'miplib_(stepsize)')
+gen_total_solved_problems_table_split_tol(df, 'miplib_(stepsize)', PAR)
 
 ######################################################################
 
@@ -411,5 +416,5 @@ df_best_fixed = fill_in_missing_problems(df_best_fixed, miplib_instances)
 df = pd.concat(df[df['experiment_label'].str.contains(e)]
                for e in PRIMALWEIGHT_EXPS_TO_USE)
 df = pd.concat((df, df_best_fixed))
-gen_solved_problems_plots_split_tol(df, 'miplib_primalweight')
-gen_total_solved_problems_table_split_tol(df, 'miplib_primalweight', PAR)
+gen_solved_problems_plots_split_tol(df, 'miplib_(primalweight)')
+gen_total_solved_problems_table_split_tol(df, 'miplib_(primalweight)', PAR)
