@@ -59,7 +59,7 @@ https://papers.nips.cc/paper/2003/file/49d4b2faeb4b7b9e745775793141e2b2-Paper.pd
 
 1. From the local directory, instantiate the necessary packages by running
    `julia --project=. -e 'import Pkg; Pkg.instantiate()'`.
-2. Download the benchmark instances. Either run
+2. Download the benchmark instances. Run
    `./collect_LIBSVM.sh` .
 3. Generate the instances by running `generate_l1_svm_lp.jl`.
 
