@@ -144,11 +144,19 @@ struct PdhgParameters
   pock_chambolle_alpha::Union{Float64,Nothing}
 
   """
-  Used to bias the computation of the primal/dual balancing parameter
-  primal_weight. Must be positive. A value of 1 balances primal and dual
-  equally.
+  Used to bias the initial value of the primal/dual balancing parameter
+  primal_weight. Must be positive. See also
+  scale_invariant_initial_primal_weight.
   """
   primal_importance::Float64
+
+  """
+  If true, computes the initial primal weight with a scale-invariant formula
+  biased by primal_importance; see select_initial_primal_weight() for more
+  details. If false, primal_importance itself is used as the initial primal
+  weight.
+  """
+  scale_invariant_initial_primal_weight::Bool
 
   """
   If >= 4 a line of debugging info is printed during some iterations. If >= 2
@@ -835,13 +843,17 @@ function optimize(
   # In practice this number is four.
   KKT_PASSES_PER_TERMINATION_EVALUATION = 2.0
 
-  solver_state.primal_weight = select_initial_primal_weight(
-    problem,
-    ones(primal_size),
-    ones(dual_size),
-    params.primal_importance,
-    params.verbosity,
-  )
+  if params.scale_invariant_initial_primal_weight
+    solver_state.primal_weight = select_initial_primal_weight(
+      problem,
+      ones(primal_size),
+      ones(dual_size),
+      params.primal_importance,
+      params.verbosity,
+    )
+  else
+    solver_state.primal_weight = params.primal_importance
+  end
 
   primal_weight_update_smoothing =
     params.restart_params.primal_weight_update_smoothing

@@ -70,12 +70,19 @@ struct MirrorProxParameters
   pock_chambolle_alpha::Union{Float64,Nothing}
 
   """
-  Used to bias the computation of the primal/dual balancing parameter
-  primal_weight. Must be positive. A value of 1 balances primal and dual
-  equally. Somewhat smaller values, e.g. 0.4, seem to yield better dual
-  solutions at the cost of increased primal infeasibility.
+  Used to bias the initial value of the primal/dual balancing parameter
+  primal_weight. Must be positive. See also
+  scale_invariant_initial_primal_weight.
   """
   primal_importance::Float64
+
+  """
+  If true, computes the initial primal weight with a scale-invariant formula
+  biased by primal_importance; see select_initial_primal_weight() for more
+  details. If false, primal_importance itself is used as the initial primal
+  weight.
+  """
+  scale_invariant_initial_primal_weight::Bool
 
   """
   Use weighted norms of rows/columns as the Bregman divergence so that it
@@ -665,13 +672,18 @@ function optimize(
   KKT_PASSES_PER_TERMINATION_EVALUATION = 2.0
 
   p = initialize_saddle_point_problem(problem, params, combo_mat)
-  primal_weight = select_initial_primal_weight(
-    problem,
-    primal_part(p.mirror_map_scaling),
-    dual_part(p.mirror_map_scaling),
-    params.primal_importance,
-    params.verbosity,
-  )
+
+  if params.scale_invariant_initial_primal_weight
+    primal_weight = select_initial_primal_weight(
+      problem,
+      primal_part(p.mirror_map_scaling),
+      dual_part(p.mirror_map_scaling),
+      params.primal_importance,
+      params.verbosity,
+    )
+  else
+    primal_weight = params.primal_importance
+  end
   update_mirror_prox_norms(p, primal_weight)
 
   primal_weight_update_smoothing =

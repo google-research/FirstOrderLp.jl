@@ -220,13 +220,19 @@ function parse_command_line()
     "--primal_importance"
     help =
       "Must be positive. The default of 1 balances primal and dual " *
-      "~equally. Somewhat smaller values, e.g. 0.4, seem to yield better " *
-      "dual solutions at the cost of increased primal infeasibility. " *
-      "This corresponds to the initial value of the primal weight. " *
-      "Note that tuning this parameter value to a particular problem may " *
-      "significantly improve performance. "
+      "~equally. This parameter biases the initial value of the primal " *
+      "weight. Note that tuning this parameter value to a particular problem " *
+      "may significantly improve performance. "
     arg_type = Float64
     default = 1.0
+
+    "--scale_invariant_initial_primal_weight"
+    help =
+      "If true, uses a scale-invariant choice of the initial primal weight " *
+      "biased by primal_importance. If false, primal_importance is the " *
+      "primal weight."
+    arg_type = Bool
+    default = true
 
     "--artificial_restart_threshold"
     help =
@@ -549,6 +555,7 @@ function main()
         parsed_args["l2_norm_rescaling"],
         pock_chambolle_alpha,
         parsed_args["primal_importance"],
+        parsed_args["scale_invariant_initial_primal_weight"],
         parsed_args["diagonal_scaling"],
         parsed_args["verbosity"],
         parsed_args["record_iteration_stats"],
@@ -576,6 +583,7 @@ function main()
         parsed_args["l2_norm_rescaling"],
         pock_chambolle_alpha,
         parsed_args["primal_importance"],
+        parsed_args["scale_invariant_initial_primal_weight"],
         parsed_args["verbosity"],
         parsed_args["record_iteration_stats"],
         parsed_args["termination_evaluation_frequency"],
