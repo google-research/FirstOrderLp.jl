@@ -71,14 +71,16 @@ struct MirrorProxParameters
 
   """
   Used to bias the initial value of the primal/dual balancing parameter
-  primal_weight. Must be positive. See scale_invariant_initial_primal_weight.
+  primal_weight. Must be positive. See also
+  scale_invariant_initial_primal_weight.
   """
   primal_importance::Float64
 
   """
   If true, computes the initial primal weight with a scale-invariant formula
-  biased by primal_importance; see select_initial_primal_weight. If false,
-  primal_importance itself is used as the initial primal weight.
+  biased by primal_importance; see select_initial_primal_weight() for more
+  details. If false, primal_importance itself is used as the initial primal
+  weight.
   """
   scale_invariant_initial_primal_weight::Bool
 
