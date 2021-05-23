@@ -111,6 +111,7 @@ def label_lookup(label):
     if 'malitskypock' in label:
         if _BEST_STR in label:
             return 'Best per-instance Malitsky-Pock settings'
+        return 'Best fixed Malitsky-Pock setting'
     return label
 
 
@@ -378,10 +379,23 @@ gen_ratio_histograms_split_tol(df, 'miplib_PDLP_v_vanilla', PAR)
 
 # bisco pdhg vs malitsky-pock results (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_malitskypock_100k.csv'))
+mp_solved = df[df['termination_reason'] == OPT] \
+            .groupby(['experiment_label', 'tolerance']) \
+            ['experiment_label'] \
+            .agg('count') \
+            .pipe(pd.DataFrame) \
+            .rename(columns={'experiment_label': 'solved'}) \
+            .reset_index()
+dfs = []
+for t in df['tolerance'].unique():
+    _df = mp_solved[mp_solved['tolerance'] == t]
+    best_mp_run = _df.loc[_df['solved'].idxmax()]['experiment_label']
+    dfs.append(df[df['experiment_label'] == best_mp_run])
+df_best_ind = fill_in_missing_problems(pd.concat(dfs), miplib_instances)
+
 # Pull out best performing fixed weight for each instance / tolerance:
 df_best_fixed = df[df['termination_reason'] == OPT].reset_index()
-best_idxs = df_best_fixed.groupby(['instance_name', 'tolerance'])[
-    'cumulative_kkt_matrix_passes'].idxmin()
+best_idxs = df_best_fixed.groupby(['instance_name', 'tolerance'])['cumulative_kkt_matrix_passes'].idxmin()
 df_best_fixed = df_best_fixed.loc[best_idxs]
 
 for t in df_best_fixed['tolerance'].unique():
@@ -390,7 +404,10 @@ for t in df_best_fixed['tolerance'].unique():
         f'malitskypock {_BEST_STR} {t}'
 
 df_best_fixed = fill_in_missing_problems(df_best_fixed, miplib_instances)
-df = pd.concat((df_default, df_best_fixed))
+df_stepsize = pd.read_csv(os.path.join(CSV_DIR, 'miplib_stepsize_100k.csv'))
+df_stepsize = fill_in_missing_problems(df_stepsize, miplib_instances)
+
+df = pd.concat((df_stepsize, df_best_fixed, df_best_ind))
 gen_solved_problems_plots_split_tol(df, 'miplib_malitskypock')
 gen_total_solved_problems_table_split_tol(df, 'miplib_malitskypock', PAR)
 
@@ -446,10 +463,10 @@ gen_total_solved_problems_table_split_tol(df, 'miplib_restarts', PAR)
 ######################################################################
 
 # bisco adaptive stepsize vs fixed stepsize (NO JOIN DEFAULT)
-df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_stepsize_100k.csv'))
-df = fill_in_missing_problems(df, miplib_instances)
-gen_solved_problems_plots_split_tol(df, 'miplib_stepsize')
-gen_total_solved_problems_table_split_tol(df, 'miplib_stepsize', PAR)
+#df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_stepsize_100k.csv'))
+#df = fill_in_missing_problems(df, miplib_instances)
+#gen_solved_problems_plots_split_tol(df, 'miplib_stepsize')
+#gen_total_solved_problems_table_split_tol(df, 'miplib_stepsize', PAR)
 
 ######################################################################
 
