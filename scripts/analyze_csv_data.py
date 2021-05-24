@@ -107,6 +107,8 @@ def label_lookup(label):
             st = '+ primal weight'
         if 'step size' in label:
             st = '+ step-size'
+        if 'pdlp_final' in label:
+            st = '+ presolve (= PDLP)'
         return st
     if 'malitskypock' in label:
         if _BEST_STR in label:
@@ -499,7 +501,10 @@ gen_total_solved_problems_table_split_tol(df, 'miplib_primalweight', PAR)
 
 # bisco ablate improvements (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_improvements_100k.csv'))
-df = pd.concat((df, df_default))
+df_pdlp = df_default.copy()
+for t in df_pdlp['tolerance'].unique():
+    df_pdlp.loc[df_pdlp['tolerance'] == t, 'experiment_label'] = f'pdlp_final_improvements_{t}'
+df = pd.concat((df, df_pdlp.reset_index()))
 df = fill_in_missing_problems(df, miplib_instances)
 gen_solved_problems_plots_split_tol(df, 'miplib_improvements', True)
 outputs = gen_total_solved_problems_table_split_tol(
@@ -518,7 +523,7 @@ def improvements_plot(dfs, prefix, key, ascending):
         df[df['tolerance'] == tol].plot(ax=ax,
                 legend=True, y=key,
                 label=f'tolerance {tol:.0E}',
-                ylabel=key, figsize=(10, 6),
+                ylabel='Normalized ' + key, figsize=(10, 6),
                 title=sanitize_title(prefix),
                 xlabel='Improvement', logy=True)
     if len(dfs) == 1:
