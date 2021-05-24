@@ -128,6 +128,7 @@ def solved_problems_vs_xaxis_figs(
         prefix,
         outer_legend=False):
     plt.figure()
+    stats_dfs = {}
     for k, df_k in dfs.items():
         stats_df = df_k.groupby(xaxis)[xaxis] \
             .agg('count') \
@@ -136,8 +137,19 @@ def solved_problems_vs_xaxis_figs(
 
         stats_df['cum_solved_count'] = stats_df['frequency'].cumsum()
         stats_df = stats_df.drop(columns='frequency').reset_index()
-        plt.plot(stats_df[xaxis],
-                 stats_df['cum_solved_count'],
+        stats_dfs[k] = stats_df
+
+    max_xaxis = pd.concat(stats_dfs)[xaxis].max()
+
+    for k, df_k in stats_dfs.items():
+        if df_k.empty:
+            continue
+        df_k = df_k.append({xaxis: max_xaxis,
+                            'cum_solved_count': df_k.iloc[-1]['cum_solved_count']},
+                           ignore_index=True)
+        df_k.reset_index()
+        plt.plot(df_k[xaxis],
+                 df_k['cum_solved_count'],
                  label=label_lookup(k))
 
     plt.ylabel('Number of problems solved')
