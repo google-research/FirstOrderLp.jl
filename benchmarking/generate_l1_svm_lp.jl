@@ -30,12 +30,15 @@ import ArgParse
 import JuMP
 import SparseArrays
 import LinearAlgebra
+import StatsBase
 
 const SparseMatrixCSC = SparseArrays.SparseMatrixCSC
 const sparse = SparseArrays.sparse
 const norm = LinearAlgebra.norm
 const Diagonal = LinearAlgebra.Diagonal
 const nzrange = SparseArrays.nzrange
+const standardize= StatsBase.standardize
+const ZScoreTransform = StatsBase.ZScoreTransform
 
 mutable struct SvmTrainingData
   feature_matrix::SparseMatrixCSC{Float64,Int64}
@@ -95,6 +98,11 @@ function parse_command_line()
     help = "Weight of the L1 regularizer."
     arg_type = Float64
     required = true
+
+    "--feature_scaling"
+    help = "Determines the scaling applied to the features. Supports 'normalized', 'standardized', and 'none'."
+    arg_type = String
+    required = false
   end
 
   return ArgParse.parse_args(arg_parse)
@@ -144,6 +152,10 @@ function normalize_columns(feature_matrix::SparseMatrixCSC{Float64,Int64})
   return feature_matrix * Diagonal(1.0 ./ norm_of_columns)
 end
 
+function standardize_columns(feature_matrix::SparseMatrixCSC{Float64, Int64})
+  return standardize(ZScoreTransform, feature_matrix, dims=1)
+end
+
 function remove_empty_columns(feature_matrix::SparseMatrixCSC{Float64,Int64})
   keep_cols = Vector{Int64}()
   for j in 1:size(feature_matrix, 2)
@@ -159,10 +171,14 @@ function add_intercept(feature_matrix::SparseMatrixCSC{Float64,Int64})
 end
 
 
-function preprocess_training_data(result::SvmTrainingData)
+function preprocess_training_data(result::SvmTrainingData; scaling::String="none")
   result.feature_matrix = remove_empty_columns(result.feature_matrix)
+  if scaling == "normalized"
+    result.feature_matrix = normalize_columns(result.feature_matrix)
+  elseif scaling == "standardized"
+    result.feature_matrix = standardize_columns(result.feature_matrix)
+  end
   result.feature_matrix = add_intercept(result.feature_matrix)
-  result.feature_matrix = normalize_columns(result.feature_matrix)
   return result
 end
 
@@ -175,7 +191,7 @@ function main()
   regularizer_weight = parsed_args["regularizer_weight"]
   input_filename = parsed_args["input_filename"]
   data = load_libsvm_file(input_filename)
-  data = preprocess_training_data(data)
+  data = preprocess_training_data(data, scaling=parsed_args["feature_scaling"])
   populate_libsvm_model(model, data, regularizer_weight)
   JuMP.write_to_file(model, parsed_args["output_filename"])
 end
