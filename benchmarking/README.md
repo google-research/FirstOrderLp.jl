@@ -66,9 +66,10 @@ https://papers.nips.cc/paper/2003/file/49d4b2faeb4b7b9e745775793141e2b2-Paper.pd
 For example,
 
 ```sh
-$ ./collect_LIBSVM.sh $HOME/LIBSVM
-$ julia --project=. generate_l1_svm_lp.jl --input_filename=$HOME/LIBSVM/duke \
-	  --output_filename=$HOME/LIBSVM/duke.mps.gz --regularizer_weight=1.0
+$ ./collect_LIBSVM.sh ${HOME}/LIBSVM
+$ julia --project=. generate_l1_svm_lp.jl \
+--input_filename=${HOME}/LIBSVM/duke \
+	  --output_filename=${HOME}/LIBSVM/duke.mps.gz --regularizer_weight=1.0
 ```
 
 ## Pagerank instances
