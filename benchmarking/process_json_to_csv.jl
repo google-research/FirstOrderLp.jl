@@ -131,9 +131,6 @@ function read_dataset(dataset_list::DatasetList)::DataFrame
       join([dataset.config[c] for c in dataset_list.config_labels], ",")
 
     log_files = Glob.glob("*_summary.json", logs_directory)
-    if length(log_files) == 0
-      error("No *_summary.json files found in $logs_directory.")
-    end
     for filename in log_files
       log = JSON3.read(read(filename, String), FirstOrderLp.SolveLog)
       row = Pair[]
@@ -144,6 +141,9 @@ function read_dataset(dataset_list::DatasetList)::DataFrame
       append!(row, solve_log_to_pairs(log))
       push!(rows, NamedTuple(row))
     end
+  end
+  if length(rows) == 0
+    error("No *_summary.json files present in any of the logs directories.")
   end
   return DataFrame(rows)
 end
