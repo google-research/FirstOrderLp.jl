@@ -162,7 +162,7 @@ def gen_solved_problems_plots(df, prefix, outer_legend=False):
     solved_problems_vs_xaxis_figs(
         optimal_dfs,
         'cumulative_kkt_matrix_passes',
-        'Cumulative KKT matrix passes',
+        'KKT matrix passes',
         prefix,
         outer_legend)
     solved_problems_vs_xaxis_figs(
@@ -329,6 +329,8 @@ def gen_ratio_histograms(df, prefix, par):
     gmean = shifted_geomean(ratios['ratio'], shift)
 
 # Unsolved problems might be missing from csv, make sure all are accounted for
+
+
 def fill_in_missing_problems(df, instances_list):
     new_index = pd.Index(instances_list, name='instance_name')
     experiments = df['experiment_label'].unique()
@@ -382,12 +384,11 @@ gen_ratio_histograms_split_tol(df, 'miplib_PDLP_v_vanilla', PAR)
 # bisco pdhg vs malitsky-pock results (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_malitskypock_100k.csv'))
 mp_solved = df[df['termination_reason'] == OPT] \
-            .groupby(['experiment_label', 'tolerance']) \
-            ['experiment_label'] \
-            .agg('count') \
-            .pipe(pd.DataFrame) \
-            .rename(columns={'experiment_label': 'solved'}) \
-            .reset_index()
+    .groupby(['experiment_label', 'tolerance'])['experiment_label'] \
+    .agg('count') \
+    .pipe(pd.DataFrame) \
+    .rename(columns={'experiment_label': 'solved'}) \
+    .reset_index()
 dfs = []
 for t in df['tolerance'].unique():
     _df = mp_solved[mp_solved['tolerance'] == t]
@@ -397,7 +398,8 @@ df_best_ind = fill_in_missing_problems(pd.concat(dfs), miplib_instances)
 
 # Pull out best performing fixed weight for each instance / tolerance:
 df_best_fixed = df[df['termination_reason'] == OPT].reset_index()
-best_idxs = df_best_fixed.groupby(['instance_name', 'tolerance'])['cumulative_kkt_matrix_passes'].idxmin()
+best_idxs = df_best_fixed.groupby(['instance_name', 'tolerance'])[
+    'cumulative_kkt_matrix_passes'].idxmin()
 df_best_fixed = df_best_fixed.loc[best_idxs]
 
 for t in df_best_fixed['tolerance'].unique():
@@ -503,12 +505,14 @@ gen_total_solved_problems_table_split_tol(df, 'miplib_primalweight', PAR)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_improvements_100k.csv'))
 df_pdlp = df_default.copy()
 for t in df_pdlp['tolerance'].unique():
-    df_pdlp.loc[df_pdlp['tolerance'] == t, 'experiment_label'] = f'pdlp_final_improvements_{t}'
+    df_pdlp.loc[df_pdlp['tolerance'] == t,
+                'experiment_label'] = f'pdlp_final_improvements_{t}'
 df = pd.concat((df, df_pdlp.reset_index()))
 df = fill_in_missing_problems(df, miplib_instances)
 gen_solved_problems_plots_split_tol(df, 'miplib_improvements', True)
 outputs = gen_total_solved_problems_table_split_tol(
     df, 'miplib_improvements', PAR)
+
 
 def improvements_plot(dfs, prefix, key, ascending):
     normalized_dfs = []
@@ -521,11 +525,11 @@ def improvements_plot(dfs, prefix, key, ascending):
     fig, ax = plt.subplots()
     for tol in df['tolerance'].unique():
         df[df['tolerance'] == tol].plot(ax=ax,
-                legend=True, y=key,
-                label=f'tolerance {tol:.0E}',
-                ylabel='Normalized ' + key, figsize=(10, 6),
-                title=sanitize_title(prefix),
-                xlabel='Improvement', logy=True)
+                                        legend=True, y=key,
+                                        label=f'tolerance {tol:.0E}',
+                                        ylabel='Normalized ' + key, figsize=(10, 6),
+                                        title=sanitize_title(prefix),
+                                        xlabel='Improvement', logy=True)
     if len(dfs) == 1:
         ax.get_legend().remove()
     name = key.replace(' ', '_')
@@ -533,6 +537,7 @@ def improvements_plot(dfs, prefix, key, ascending):
     plt.savefig(
         path,
         bbox_inches="tight")
+
 
 for tol, df in outputs.items():
     df = df.copy()
@@ -576,5 +581,3 @@ improvements_plot(
     'miplib_improvements',
     'Solved count',
     ascending=True)
-
-
