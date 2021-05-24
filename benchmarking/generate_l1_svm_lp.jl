@@ -60,7 +60,7 @@ function populate_libsvm_model(
   println("Generating a model with $n datapoints and $(d - 1) features.")
   JuMP.@variable(model, beta[i = 1:d])
   JuMP.@variable(model, w[i = 1:n], lower_bound = 0.0)
-  JuMP.@variable(model, z[i = 1:d])
+  JuMP.@variable(model, z[i = 1:d], lower_bound = 0.0)
   JuMP.@objective(model, Min, sum(w) + regularizer_weight * sum(z))
   JuMP.@constraint(model, z .>= beta)
   JuMP.@constraint(model, z .>= -beta)
