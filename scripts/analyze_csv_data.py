@@ -62,9 +62,9 @@ def label_lookup(label):
     if 'pdhg_vanilla' in label:
         return 'Vanilla PDHG'
     if 'scs-indirect' in label:
-        return 'SCS Indirect'
+        return 'SCS (matrix-free)'
     if 'scs-direct' in label:
-        return 'SCS Direct'
+        return 'SCS'
     if 'nopresolve' in label:
         return 'No presolve'
     if 'no restarts' in label:
@@ -256,7 +256,8 @@ def gen_total_solved_problems_table(df, prefix, par):
         caption=f'Performance statistics: {sanitize_title(prefix)}',
         label=f't:solved-probs',
         column_format='lccc',
-        escape=False)
+        escape=False,
+        na_rep='-')
     path = os.path.join(TEX_DIR, f'{prefix}_solved_probs_table.tex')
     with open(path, "w") as f:
         f.write(table)
@@ -332,7 +333,8 @@ def gen_ratio_histograms(df, prefix, par):
                             index=False,
                             caption=f'Performance ratio.',
                             label=f't:solved-probs',
-                            column_format='lc')
+                            column_format='lc',
+                            na_rep='-')
     path = os.path.join(TEX_DIR, f'{prefix}_({label_lookup(l0)}):'
                                  f'({label_lookup(l1)})_ratio_table.tex')
     with open(path, "w") as f:
