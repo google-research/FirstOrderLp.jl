@@ -30,6 +30,7 @@ import ArgParse
 import JuMP
 import SparseArrays
 import LinearAlgebra
+import Printf
 
 const SparseMatrixCSC = SparseArrays.SparseMatrixCSC
 const sparse = SparseArrays.sparse
@@ -86,15 +87,22 @@ function parse_command_line()
     arg_type = String
     required = true
 
-    "--output_filename"
+    "--output_directory"
     help = "Filename for the output .mps (or .mps.gz) model."
     arg_type = String
     required = true
 
-    "--regularizer_weight"
-    help = "Weight of the L1 regularizer."
-    arg_type = Float64
-    required = true
+    # "--regularizer_weights"
+    # help = "Weight of the L1 regularizer."
+    # arg_type = Vector{Float64}
+    # required = true
+
+    "--feature_scaling"
+    help = "Determines the scaling applied to the features. Supports 'l2', 'linf', and 'none'."
+    arg_type = String
+    required = false
+    default = "l2"
+
   end
 
   return ArgParse.parse_args(arg_parse)
@@ -138,10 +146,19 @@ function load_libsvm_file(file_name::String)
   end
 end
 
-function normalize_columns(feature_matrix::SparseMatrixCSC{Float64,Int64})
-  norm_of_columns = vec(sqrt.(sum(t -> t^2, feature_matrix, dims = 1)))
-  norm_of_columns[iszero.(norm_of_columns)] .= 1.0
-  return feature_matrix * Diagonal(1.0 ./ norm_of_columns)
+function normalize_columns(feature_matrix::SparseMatrixCSC{Float64,Int64}, scale_vector::Vector{Float64})
+  scale_vector[iszero.(scale_vector)] .= 1.0
+  return feature_matrix * Diagonal(1.0 ./ scale_vector)
+end
+
+function l2_normalize_columns(feature_matrix::SparseMatrixCSC{Float64,Int64})
+  return normalize_columns(feature_matrix,
+                           vec(sqrt.(sum(t -> t^2, feature_matrix, dims = 1))))
+end
+
+function linf_normalize_columns(feature_matrix::SparseMatrixCSC{Float64, Int64})
+  return normalize_columns(feature_matrix,
+                           vec(maximum(t -> abs(t), feature_matrix, dims = 1)))
 end
 
 function remove_empty_columns(feature_matrix::SparseMatrixCSC{Float64,Int64})
@@ -159,10 +176,14 @@ function add_intercept(feature_matrix::SparseMatrixCSC{Float64,Int64})
 end
 
 
-function preprocess_training_data(result::SvmTrainingData)
+function preprocess_training_data(result::SvmTrainingData; scaling::String="none")
   result.feature_matrix = remove_empty_columns(result.feature_matrix)
+  if scaling == "l2"
+    result.feature_matrix = l2_normalize_columns(result.feature_matrix)
+  elseif scaling == "linf"
+    result.feature_matrix = linf_normalize_columns(result.feature_matrix)
+  end
   result.feature_matrix = add_intercept(result.feature_matrix)
-  result.feature_matrix = normalize_columns(result.feature_matrix)
   return result
 end
 
@@ -170,14 +191,24 @@ end
 function main()
   parsed_args = parse_command_line()
 
-  filename = parsed_args["output_filename"]
   model = JuMP.Model()
-  regularizer_weight = parsed_args["regularizer_weight"]
+  regularizer_weights = [10^(-8) * 10^j for j in 0:12]
   input_filename = parsed_args["input_filename"]
+
   data = load_libsvm_file(input_filename)
-  data = preprocess_training_data(data)
-  populate_libsvm_model(model, data, regularizer_weight)
-  JuMP.write_to_file(model, parsed_args["output_filename"])
+  data = preprocess_training_data(data, scaling=parsed_args["feature_scaling"])
+  populate_libsvm_model(model, data, regularizer_weights[1])
+  for lambda in regularizer_weights
+    println("Generating model with regularizer weight $(lambda)")
+    output_path = Base.Filesystem.joinpath(
+      parsed_args["output_directory"],
+      Base.Filesystem.splitpath(input_filename)[end] * (Printf.@sprintf "%.0e" lambda) * ".mps.gz")
+    println("Saving file to " * output_path)
+    JuMP.@objective(model, Min, sum(model[:w]) + lambda * sum(model[:z]))
+    JuMP.write_to_file(model,
+                       output_path)
+
+  end
 end
 
 main()
