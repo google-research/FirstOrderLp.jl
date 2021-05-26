@@ -1,4 +1,5 @@
-# Taken from Hans Mittelmann's benchmarks:
+# This instance list represents the union of the instances listed on Hans
+# Mittelmann's linear programming benchmark sites:
 # - http://plato.asu.edu/ftp/lpsimp.html
 # - http://plato.asu.edu/ftp/lpbar.html
 # - http://plato.asu.edu/ftp/network.html
