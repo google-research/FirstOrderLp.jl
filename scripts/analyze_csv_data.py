@@ -249,6 +249,7 @@ def gen_total_solved_problems_table(df, prefix, par):
     for e in output['Experiment']:
         output.loc[output['Experiment'] == e, 'Experiment'] = label_lookup(e)
 
+    output = output.sort_values('Solved count', ascending=True)
     table = output.to_latex(
         float_format="%.1f",
         longtable=False,
