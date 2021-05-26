@@ -361,6 +361,76 @@ def fill_in_missing_problems(df, instances_list):
         dfs.append(new_df)
     return pd.concat(dfs)
 
+def improvements_plot(dfs, prefix, key, ascending):
+    normalized_dfs = []
+    for df in dfs:
+        df = df.sort_values(key, ascending=ascending)
+        df[key] = df[key] / (df[key].min() if ascending else df[key].max())
+        normalized_dfs.append(df)
+    df = pd.concat(normalized_dfs)
+    df.set_index('Experiment', inplace=True)
+    fig, ax = plt.subplots()
+    for tol in df['tolerance'].unique():
+        df[df['tolerance'] == tol].plot(ax=ax,
+                                        legend=True, y=key,
+                                        label=f'tolerance {tol:.0E}',
+                                        ylabel='Normalized ' + key, figsize=(10, 6),
+                                        title=sanitize_title(prefix),
+                                        xlabel='Improvement', logy=True)
+    if len(dfs) == 1:
+        ax.get_legend().remove()
+    name = key.replace(' ', '_')
+    path = os.path.join(FIGS_DIR, f'{prefix}_{name}.pdf')
+    plt.savefig(
+        path,
+        bbox_inches="tight")
+
+
+def gen_all_improvement_plots(outputs, prefix):
+    for tol, df in outputs.items():
+        df = df.copy()
+        df['tolerance'] = tol
+        improvements_plot(
+            (df,),
+            prefix +
+            f'_tol_{tol:.0E}',
+            'KKT passes SGM10',
+            ascending=False)
+        improvements_plot(
+            (df,),
+            prefix +
+            f'_tol_{tol:.0E}',
+            'Solve time secs SGM10',
+            ascending=False)
+        improvements_plot(
+            (df,),
+            prefix +
+            f'_tol_{tol:.0E}',
+            'Solved count',
+            ascending=True)
+
+    dfs = []
+    for tol, df in outputs.items():
+        df = df.copy()
+        df['tolerance'] = tol
+        dfs.append(df)
+    improvements_plot(
+        dfs,
+        prefix,
+        'KKT passes SGM10',
+        ascending=False)
+    improvements_plot(
+        dfs,
+        prefix,
+        'Solve time secs SGM10',
+        ascending=False)
+    improvements_plot(
+        dfs,
+        prefix,
+        'Solved count',
+        ascending=True)
+
+
 
 # First, make output directories
 if not os.path.exists(FIGS_DIR):
@@ -481,6 +551,7 @@ gen_total_solved_problems_table_split_tol(df, 'miplib_restarts', PAR)
 
 ######################################################################
 
+# XXX merged into malitsky pock above:
 # bisco adaptive stepsize vs fixed stepsize (NO JOIN DEFAULT)
 #df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_stepsize_100k.csv'))
 #df = fill_in_missing_problems(df, miplib_instances)
@@ -516,7 +587,7 @@ gen_total_solved_problems_table_split_tol(df, 'miplib_primalweight', PAR)
 
 ######################################################################
 
-# bisco ablate improvements (JOIN DEFAULT)
+# MIPLIB bisco ablate improvements (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_improvements_100k.csv'))
 df_pdlp = df_default.copy()
 for t in df_pdlp['tolerance'].unique():
@@ -527,72 +598,25 @@ df = fill_in_missing_problems(df, miplib_instances)
 gen_solved_problems_plots_split_tol(df, 'miplib_improvements', True)
 outputs = gen_total_solved_problems_table_split_tol(
     df, 'miplib_improvements', PAR)
+gen_all_improvement_plots(outputs, 'miplib_improvements')
 
 
-def improvements_plot(dfs, prefix, key, ascending):
-    normalized_dfs = []
-    for df in dfs:
-        df = df.sort_values(key, ascending=ascending)
-        df[key] = df[key] / (df[key].min() if ascending else df[key].max())
-        normalized_dfs.append(df)
-    df = pd.concat(normalized_dfs)
-    df.set_index('Experiment', inplace=True)
-    fig, ax = plt.subplots()
-    for tol in df['tolerance'].unique():
-        df[df['tolerance'] == tol].plot(ax=ax,
-                                        legend=True, y=key,
-                                        label=f'tolerance {tol:.0E}',
-                                        ylabel='Normalized ' + key, figsize=(10, 6),
-                                        title=sanitize_title(prefix),
-                                        xlabel='Improvement', logy=True)
-    if len(dfs) == 1:
-        ax.get_legend().remove()
-    name = key.replace(' ', '_')
-    path = os.path.join(FIGS_DIR, f'{prefix}_{name}.pdf')
-    plt.savefig(
-        path,
-        bbox_inches="tight")
+# MITTELMAN bisco ablate improvements (JOIN DEFAULT)
+df_default_mittelmann = pd.read_csv(
+    os.path.join(
+        CSV_DIR,
+        'mittelmann_pdhg_enhanced_100k.csv'))
+df_default_mittelmann = fill_in_missing_problems(df_default_mittelmann, mittelmann_instances)
 
+df = pd.read_csv(os.path.join(CSV_DIR, 'mittelmann_improvements_100k.csv'))
+df_pdlp = df_default_mittelmann.copy()
+for t in df_pdlp['tolerance'].unique():
+    df_pdlp.loc[df_pdlp['tolerance'] == t,
+                'experiment_label'] = f'pdlp_final_improvements_{t}'
+df = pd.concat((df, df_pdlp.reset_index()))
+df = fill_in_missing_problems(df, mittelmann_instances)
+gen_solved_problems_plots_split_tol(df, 'mittelmann_improvements', True)
+outputs = gen_total_solved_problems_table_split_tol(
+    df, 'mittelmann_improvements', PAR)
+gen_all_improvement_plots(outputs, 'mittelmann_improvements')
 
-for tol, df in outputs.items():
-    df = df.copy()
-    df['tolerance'] = tol
-    improvements_plot(
-        (df,),
-        'miplib_improvements' +
-        f'_tol_{tol:.0E}',
-        'KKT passes SGM10',
-        ascending=False)
-    improvements_plot(
-        (df,),
-        'miplib_improvements' +
-        f'_tol_{tol:.0E}',
-        'Solve time secs SGM10',
-        ascending=False)
-    improvements_plot(
-        (df,),
-        'miplib_improvements' +
-        f'_tol_{tol:.0E}',
-        'Solved count',
-        ascending=True)
-
-dfs = []
-for tol, df in outputs.items():
-    df = df.copy()
-    df['tolerance'] = tol
-    dfs.append(df)
-improvements_plot(
-    dfs,
-    'miplib_improvements',
-    'KKT passes SGM10',
-    ascending=False)
-improvements_plot(
-    dfs,
-    'miplib_improvements',
-    'Solve time secs SGM10',
-    ascending=False)
-improvements_plot(
-    dfs,
-    'miplib_improvements',
-    'Solved count',
-    ascending=True)
