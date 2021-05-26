@@ -19,7 +19,7 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 import matplotlib.pyplot as plt
-plt.rcParams.update({'figure.max_open_warning': 0})
+plt.rcParams.update({'figure.max_open_warning': 0, 'font.size': 16})
 
 # directory where the csv files are located
 CSV_DIR = './csv'
@@ -52,6 +52,8 @@ PRIMALWEIGHT_EXPS_TO_USE = [
 # placeholder:
 _BEST_STR = '_best_str_'
 
+MITTELMANN_STR = 'lp_benchmark'
+
 
 # Horrible HACK, but needs to be done
 def label_lookup(label):
@@ -60,7 +62,7 @@ def label_lookup(label):
     if 'mirror-prox' in label:
         return 'Mirror Prox'
     if 'pdhg_vanilla' in label:
-        return 'Vanilla PDHG'
+        return 'PDHG'
     if 'scs-indirect' in label:
         return 'SCS (matrix-free)'
     if 'scs-direct' in label:
@@ -118,7 +120,12 @@ def label_lookup(label):
 
 
 def sanitize_title(title):
-    return title.replace('_', ' ').title()
+    title = title.replace('_', ' ').title()
+    title = title.replace('Lp', 'LP')
+    title = title.replace('Miplib', 'MIPLIB')
+    title = title.replace('Pdlp', 'PDLP')
+    title = title.replace('Pdhg', 'PDHG')
+    return title
 
 
 def solved_problems_vs_xaxis_figs(
@@ -126,6 +133,7 @@ def solved_problems_vs_xaxis_figs(
         xaxis,
         xlabel,
         prefix,
+        num_instances,
         outer_legend=False):
     plt.figure()
     stats_dfs = {}
@@ -135,7 +143,8 @@ def solved_problems_vs_xaxis_figs(
             .pipe(pd.DataFrame) \
             .rename(columns={xaxis: 'frequency'})
 
-        stats_df['cum_solved_count'] = stats_df['frequency'].cumsum()
+        stats_df['cum_solved_count'] = stats_df['frequency'].cumsum() / \
+            num_instances
         stats_df = stats_df.drop(columns='frequency').reset_index()
         stats_dfs[k] = stats_df
 
@@ -152,8 +161,10 @@ def solved_problems_vs_xaxis_figs(
                  df_k['cum_solved_count'],
                  label=label_lookup(k))
 
-    plt.ylabel('Number of problems solved')
+    plt.ylabel('Fraction of problems solved')
     plt.xlabel(xlabel)
+    plt.ylim((0, 1))
+    plt.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
     plt.title(sanitize_title(prefix))
     if outer_legend:
         plt.legend(bbox_to_anchor=(1.04, 0.5), loc='center left')
@@ -165,7 +176,7 @@ def solved_problems_vs_xaxis_figs(
         bbox_inches="tight")
 
 
-def gen_solved_problems_plots(df, prefix, outer_legend=False):
+def gen_solved_problems_plots(df, prefix, num_instances, outer_legend=False):
     exps = df['experiment_label'].unique()
     dfs = {k: df[df['experiment_label'] == k] for k in exps}
     optimal_dfs = {k: v[v['termination_reason'] == OPT]
@@ -176,20 +187,23 @@ def gen_solved_problems_plots(df, prefix, outer_legend=False):
         'cumulative_kkt_matrix_passes',
         'KKT matrix passes',
         prefix,
+        num_instances,
         outer_legend)
     solved_problems_vs_xaxis_figs(
         optimal_dfs,
         'solve_time_sec',
         'Wall-clock time (secs)',
         prefix,
+        num_instances,
         outer_legend)
 
 
-def gen_solved_problems_plots_split_tol(df, prefix, outer_legend=False):
+def gen_solved_problems_plots_split_tol(
+        df, prefix, num_instances, outer_legend=False):
     tols = df['tolerance'].unique()
     for t in tols:
         gen_solved_problems_plots(
-            df[df['tolerance'] == t], prefix + f'_tol_{t:.0E}', outer_legend)
+            df[df['tolerance'] == t], prefix + f'_tol_{t:.0E}', num_instances, outer_legend)
 
 
 def shifted_geomean(x, shift):
@@ -361,24 +375,28 @@ def fill_in_missing_problems(df, instances_list):
         dfs.append(new_df)
     return pd.concat(dfs)
 
+
 def improvements_plot(dfs, prefix, key, ascending):
     normalized_dfs = []
     for df in dfs:
-        df = df.sort_values(key, ascending=ascending)
-        df[key] = df[key] / (df[key].min() if ascending else df[key].max())
+        df[key] /= df[df['Experiment'] == 'PDHG'][key].to_numpy()[0]
         normalized_dfs.append(df)
+
     df = pd.concat(normalized_dfs)
-    df.set_index('Experiment', inplace=True)
-    fig, ax = plt.subplots()
+    fig = plt.figure(figsize=(15, 9))
     for tol in df['tolerance'].unique():
-        df[df['tolerance'] == tol].plot(ax=ax,
-                                        legend=True, y=key,
-                                        label=f'tolerance {tol:.0E}',
-                                        ylabel='Normalized ' + key, figsize=(10, 6),
-                                        title=sanitize_title(prefix),
-                                        xlabel='Improvement', logy=True)
-    if len(dfs) == 1:
-        ax.get_legend().remove()
+        _df = df[df['tolerance'] == tol].reset_index(drop=True)
+        plt.plot(
+            _df[key].to_numpy(),
+            linestyle='--',
+            marker='o',
+            label=f'tolerance {tol:.0E}')
+        plt.yscale('log')
+        plt.ylabel('Normalized ' + key)
+        plt.title(sanitize_title(prefix))
+        plt.xticks(range(len(_df['Experiment'])), _df['Experiment'].to_list())
+    if len(dfs) > 1:
+        plt.legend(loc='best')
     name = key.replace(' ', '_')
     path = os.path.join(FIGS_DIR, f'{prefix}_{name}.pdf')
     plt.savefig(
@@ -431,7 +449,6 @@ def gen_all_improvement_plots(outputs, prefix):
         ascending=True)
 
 
-
 # First, make output directories
 if not os.path.exists(FIGS_DIR):
     os.makedirs(FIGS_DIR)
@@ -460,9 +477,9 @@ df_default = fill_in_missing_problems(df_default, miplib_instances)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_pdhg_vanilla_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
 df = pd.concat((df_default, df))
-gen_solved_problems_plots_split_tol(df, 'miplib_PDLP_v_vanilla')
-gen_total_solved_problems_table_split_tol(df, 'miplib_PDLP_v_vanilla', PAR)
-gen_ratio_histograms_split_tol(df, 'miplib_PDLP_v_vanilla', PAR)
+gen_solved_problems_plots_split_tol(df, 'miplib', len(miplib_instances))
+gen_total_solved_problems_table_split_tol(df, 'miplib', PAR)
+gen_ratio_histograms_split_tol(df, 'miplib', PAR)
 
 ######################################################################
 
@@ -497,8 +514,9 @@ df_stepsize = pd.read_csv(os.path.join(CSV_DIR, 'miplib_stepsize_100k.csv'))
 df_stepsize = fill_in_missing_problems(df_stepsize, miplib_instances)
 
 df = pd.concat((df_stepsize, df_best_fixed, df_best_ind))
-gen_solved_problems_plots_split_tol(df, 'miplib_malitskypock')
-gen_total_solved_problems_table_split_tol(df, 'miplib_malitskypock', PAR)
+gen_solved_problems_plots_split_tol(
+    df, 'miplib_malitskypock', len(miplib_instances))
+gen_total_solved_problems_table_split_tol(df, 'miplib_stepsize', PAR)
 
 ######################################################################
 
@@ -508,8 +526,9 @@ df_pdhg_mp = fill_in_missing_problems(df_pdhg_mp, miplib_instances)
 df_scs = pd.read_csv(os.path.join(CSV_DIR, 'miplib_scs_1h.csv'))
 df_scs = fill_in_missing_problems(df_scs, miplib_instances)
 df = pd.concat((df_pdhg_mp, df_scs))
-gen_solved_problems_plots_split_tol(df, 'miplib')
-gen_total_solved_problems_table_split_tol(df, 'miplib', PAR)
+gen_solved_problems_plots_split_tol(
+    df, 'miplib_baselines', len(miplib_instances))
+gen_total_solved_problems_table_split_tol(df, 'miplib_baselines', PAR)
 
 ######################################################################
 
@@ -519,15 +538,20 @@ df_pdhg_mp = fill_in_missing_problems(df_pdhg_mp, mittelmann_instances)
 df_scs = pd.read_csv(os.path.join(CSV_DIR, 'mittelmann_scs_1h.csv'))
 df_scs = fill_in_missing_problems(df_scs, mittelmann_instances)
 df = pd.concat((df_pdhg_mp, df_scs))
-gen_solved_problems_plots_split_tol(df, 'mittelmann')
-gen_total_solved_problems_table_split_tol(df, 'mittelmann', PAR)
+gen_solved_problems_plots_split_tol(
+    df,
+    f'{MITTELMANN_STR}_baselines',
+    len(mittelmann_instances))
+gen_total_solved_problems_table_split_tol(
+    df, f'{MITTELMANN_STR}_baselines', PAR)
 
 ######################################################################
 
 # bisco presolve vs no presolve (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_nopresolve_100k.csv'))
 df = pd.concat((df_default, df))
-gen_solved_problems_plots_split_tol(df, 'miplib_presolve')
+gen_solved_problems_plots_split_tol(
+    df, 'miplib_presolve', len(miplib_instances))
 gen_total_solved_problems_table_split_tol(df, 'miplib_presolve', PAR)
 
 ######################################################################
@@ -538,7 +562,8 @@ df = fill_in_missing_problems(df, miplib_instances)
 # filter out un-needed scaling experiments:
 df = pd.concat(df[df['experiment_label'].str.contains(e)]
                for e in SCALING_EXPS_TO_USE)
-gen_solved_problems_plots_split_tol(df, 'miplib_scaling')
+gen_solved_problems_plots_split_tol(
+    df, 'miplib_scaling', len(miplib_instances))
 gen_total_solved_problems_table_split_tol(df, 'miplib_scaling', PAR)
 
 ######################################################################
@@ -546,7 +571,8 @@ gen_total_solved_problems_table_split_tol(df, 'miplib_scaling', PAR)
 # bisco restart vs no restart (NO JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_restarts_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
-gen_solved_problems_plots_split_tol(df, 'miplib_restarts')
+gen_solved_problems_plots_split_tol(
+    df, 'miplib_restarts', len(miplib_instances))
 gen_total_solved_problems_table_split_tol(df, 'miplib_restarts', PAR)
 
 ######################################################################
@@ -555,7 +581,7 @@ gen_total_solved_problems_table_split_tol(df, 'miplib_restarts', PAR)
 # bisco adaptive stepsize vs fixed stepsize (NO JOIN DEFAULT)
 #df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_stepsize_100k.csv'))
 #df = fill_in_missing_problems(df, miplib_instances)
-#gen_solved_problems_plots_split_tol(df, 'miplib_stepsize')
+#gen_solved_problems_plots_split_tol(df, 'miplib_stepsize', len(miplib_instances))
 #gen_total_solved_problems_table_split_tol(df, 'miplib_stepsize', PAR)
 
 ######################################################################
@@ -581,11 +607,21 @@ df_best_fixed = fill_in_missing_problems(df_best_fixed, miplib_instances)
 df = pd.concat(df[df['experiment_label'].str.contains(e)]
                for e in PRIMALWEIGHT_EXPS_TO_USE)
 df = pd.concat((df, df_best_fixed))
-gen_solved_problems_plots_split_tol(df, 'miplib_primalweight')
+gen_solved_problems_plots_split_tol(
+    df, 'miplib_primalweight', len(miplib_instances))
 gen_total_solved_problems_table_split_tol(df, 'miplib_primalweight', PAR)
 
 
 ######################################################################
+
+improvements_order = [
+    'PDHG',
+    '+ restarts',
+    '+ scaling',
+    '+ primal weight',
+    '+ step-size',
+    '+ presolve (= PDLP)']
+order_idx = dict(zip(improvements_order, range(len(improvements_order))))
 
 # MIPLIB bisco ablate improvements (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_improvements_100k.csv'))
@@ -595,9 +631,16 @@ for t in df_pdlp['tolerance'].unique():
                 'experiment_label'] = f'pdlp_final_improvements_{t}'
 df = pd.concat((df, df_pdlp.reset_index()))
 df = fill_in_missing_problems(df, miplib_instances)
-gen_solved_problems_plots_split_tol(df, 'miplib_improvements', True)
+gen_solved_problems_plots_split_tol(
+    df, 'miplib_improvements', len(miplib_instances), True)
 outputs = gen_total_solved_problems_table_split_tol(
     df, 'miplib_improvements', PAR)
+
+for df in outputs.values():
+    df['rank'] = df['Experiment'].map(order_idx)
+    df.sort_values('rank', inplace=True)
+    df.drop('rank', 1, inplace=True)
+
 gen_all_improvement_plots(outputs, 'miplib_improvements')
 
 
@@ -606,7 +649,8 @@ df_default_mittelmann = pd.read_csv(
     os.path.join(
         CSV_DIR,
         'mittelmann_pdhg_enhanced_100k.csv'))
-df_default_mittelmann = fill_in_missing_problems(df_default_mittelmann, mittelmann_instances)
+df_default_mittelmann = fill_in_missing_problems(
+    df_default_mittelmann, mittelmann_instances)
 
 df = pd.read_csv(os.path.join(CSV_DIR, 'mittelmann_improvements_100k.csv'))
 df_pdlp = df_default_mittelmann.copy()
@@ -615,8 +659,17 @@ for t in df_pdlp['tolerance'].unique():
                 'experiment_label'] = f'pdlp_final_improvements_{t}'
 df = pd.concat((df, df_pdlp.reset_index()))
 df = fill_in_missing_problems(df, mittelmann_instances)
-gen_solved_problems_plots_split_tol(df, 'mittelmann_improvements', True)
+gen_solved_problems_plots_split_tol(
+    df,
+    f'{MITTELMANN_STR}_improvements',
+    len(mittelmann_instances),
+    True)
 outputs = gen_total_solved_problems_table_split_tol(
-    df, 'mittelmann_improvements', PAR)
-gen_all_improvement_plots(outputs, 'mittelmann_improvements')
+    df, f'{MITTELMANN_STR}_improvements', PAR)
 
+for df in outputs.values():
+    df['rank'] = df['Experiment'].map(order_idx)
+    df.sort_values('rank', inplace=True)
+    df.drop('rank', 1, inplace=True)
+
+gen_all_improvement_plots(outputs, f'{MITTELMANN_STR}_improvements')
