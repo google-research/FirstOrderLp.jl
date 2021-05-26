@@ -26,9 +26,10 @@ $ ./preprocess.sh ~/miplib2017_collection ./miplib2017_instance_list \
     ~/miplib2017_preprocessed ~/PaPILO/build/bin/papilo
 ```
 
-## Preprocessed Mittelmann benchmark dataset
+## Preprocessed LP benchmark dataset
 
-This benchmark contains the union of the instances from Hans Mittelmann's
+This dataset contains the union of the instances from Hans Mittelmann's
+linear programming benchmark sites
 [Benchmark of Simplex LP Solvers](http://plato.asu.edu/ftp/lpsimp.html),
 [Benchmark of Barrier LP Solvers](http://plato.asu.edu/ftp/lpbar.html), and
 [Large Network-LP Benchmark (commercial vs
@@ -37,7 +38,7 @@ This benchmark contains the union of the instances from Hans Mittelmann's
 1. From the local directory, instantiate the necessary packages by running
    `julia --project=. -e 'import Pkg; Pkg.instantiate()'`.
 2. Download the benchmark instances. Either run
-   `./collect_mittelmann_benchmark.sh` or follow its steps for downloading the
+   `./collect_lp_benchmark.sh` or follow its steps for downloading the
    instances from the multiple sources and organizing them.
 3. Download and build PaPILO from https://github.com/lgottwald/PaPILO.
 4. From the local directory, run `./preprocess.sh`.
@@ -46,9 +47,9 @@ For example, assuming you have already instantiated the packages and built
 PaPILO,
 
 ```sh
-$ ./collect_mittelmann_benchmark.sh /tmp ~/mittelmann_benchmark
-$ ./preprocess.sh ~/mittelmann_benchmark ./mittelmann_instance_list \
-    ~/mittelmann_preprocessed ~/PaPILO/build/bin/papilo
+$ ./collect_lp_benchmark.sh /tmp ~/lp_benchmark
+$ ./preprocess.sh ~/lp_benchmark ./lp_benchmark_instance_list \
+    ~/lp_benchmark_preprocessed ~/PaPILO/build/bin/papilo
 ```
 
 ## L1 SVM

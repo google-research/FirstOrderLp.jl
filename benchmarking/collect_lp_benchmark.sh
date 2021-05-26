@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# This script illustrates how to collect the instances in the "Mittelmann"
-# benchmark set. Although it can be used directly to collect the benchmark, it
-# is intended primarily as a guide to collecting the benchmark - it makes
-# several assumptions about the environment. In particular, it assumes
-# wget, tar, bzcat, gzip, zcat, and cc exist and work as expected.
+# This script illustrates how to collect the instances in the "LP Benchmark"
+# set. Although it can be used directly to collect the benchmark, it is intended
+# primarily as a guide to collecting the benchmark - it makes several
+# assumptions about the environment. In particular, it assumes wget, tar, bzcat,
+# gzip, zcat, and cc exist and work as expected.
 #
 # This collects the union of the instances from:
 # * Benchmark of Simplex LP solvers: http://plato.asu.edu/ftp/lpsimp.html
@@ -26,7 +26,7 @@
 #     http://plato.asu.edu/ftp/network.html
 
 if [[ "$#" != 2 ]]; then
-  echo "Usage: collect_mittelmann_benchmark.sh temporary_dir output_dir" 1>&2
+  echo "Usage: collect_lp_benchmark.sh temporary_dir output_dir" 1>&2
   exit 1
 fi
 
@@ -47,7 +47,7 @@ tar xzf miplib2010-1.1.3-complete.tgz -C "${DEST_DIR}" --strip-components 3 \
   miplib2010-1.1.3/instances/miplib2010/shs1023.mps.gz \
   miplib2010-1.1.3/instances/miplib2010/stp3d.mps.gz
 
-# bzipped MPS instances from Mittelmann's lptestset.
+# bzipped MPS instances from plato.asu.edu/fp/lptestset.
 for f in chromaticindex1024-7 datt256_lp ex10 fhnw-binschedule0_lp \
     graph40-40_lp irish-electricity neos-3025225_lp neos-5052403-cygnet \
     neos-5251015_lp physiciansched3-3 qap15 rmine15_lp s82_lp s100 s250r10 \
@@ -57,14 +57,14 @@ for f in chromaticindex1024-7 datt256_lp ex10 fhnw-binschedule0_lp \
        gzip > "${DEST_DIR}/${f}.mps.gz"
 done
 
-# bzipped MPS instances from Mittelmann's lptestset, removing a trailing "_lp"
-# from the name.
+# bzipped MPS instances from plato.asu.edu/fp/lptestset, removing a trailing
+# "_lp" from the name.
 for f in datt256 graph40-40 neos-3025225 neos-5251015 rmine15 s82 scpm1; do
   mv "${DEST_DIR}/${f}_lp.mps.gz" "${DEST_DIR}/${f}.mps.gz"
 done
 
-# bzipped MPS instances from Mittelmann's lptestset, renaming the file to match
-# the testset name.
+# bzipped MPS instances from plato.asu.edu/fp/lptestset, renaming the file to
+# match the testset name.
 mv "${DEST_DIR}/chromaticindex1024-7.mps.gz" "${DEST_DIR}/chrom1024-7.mps.gz"
 mv "${DEST_DIR}/fhnw-binschedule0_lp.mps.gz" "${DEST_DIR}/fhnw-bin0.mps.gz"
 mv "${DEST_DIR}/irish-electricity.mps.gz" "${DEST_DIR}/irish-e.mps.gz"
@@ -79,13 +79,13 @@ mv "${DEST_DIR}/tpl-tub-ws1617_lp.mps.gz" "${DEST_DIR}/tpl-tub-ws16.mps.gz"
 wget -nv http://www.netlib.org/lp/data/emps.c
 cc -O3 -o emps emps.c
 
-# bzipped "compressed MPS" instances from Mittelmann's lptestset.
+# bzipped "compressed MPS" instances from plato.asu.edu/fp/lptestset.
 for f in L1_sixm250obs L1_sixm1000obs Linf_520c; do
   wget -nv -O - "http://plato.asu.edu/ftp/lptestset/${f}.bz2" | bzcat | \
        ./emps | gzip > "${DEST_DIR}/${f}.mps.gz"
 done
 
-# gzipped "compressed MPS" instances from Mittelmann's lptestset.
+# gzipped "compressed MPS" instances from plato.asu.edu/fp/lptestset.
 for f in fome/fome13 misc/cont1 misc/cont11 misc/neos misc/neos3 \
     misc/ns1687037 misc/ns1688926 misc/stormG2_1000 nug/nug08-3rd pds/pds-100 \
     rail/rail4284; do
@@ -94,14 +94,14 @@ for f in fome/fome13 misc/cont1 misc/cont11 misc/neos misc/neos3 \
        ./emps | gzip > "${DEST_DIR}/${instance}.mps.gz"
 done
 
-# gzipped mps network instances from Mittelmann's lptestset.
+# gzipped mps network instances from plato.asu.edu/fp/lptestset.
 for f in 16_n14 i_n13 lo10 long15 netlarge1 netlarge2 netlarge3 netlarge6 \
     square15 wide15; do
   wget -nv -O "${DEST_DIR}/${f}.mps.gz" \
       "http://plato.asu.edu/ftp/lptestset/network/${f}.mps.gz"
 done
 
-# gzipped "compressed MPS" instances from Meszaros.
+# gzipped "compressed MPS" instances from old.sztaki.hu/~meszaros.
 for f in infeas/self misc/stat96v1 New/degme New/karted New/tp-6 \
     New/ts-palko; do
   instance="$(basename $f)"
@@ -111,27 +111,29 @@ for f in infeas/self misc/stat96v1 New/degme New/karted New/tp-6 \
 done
 
 # The remaining script covers instances that are no longer included in
-# Mittelmann's benchmarks, but had been in the somewhat recent past.
+# the LP benchmarks, but had been in the somewhat recent past.
 
 if false; then
   # Discontinued instances from miplib2010.
   tar xzf miplib2010-1.1.3-complete.tgz -C "${DEST_DIR}" --strip-components 3 \
     miplib2010-1.1.3/instances/miplib2010/ns1644855.mps.gz
 
-  # Discontinued bzipped MPS instances from Mittelmann's lptestset
+  # Discontinued bzipped MPS instances from plato.asu.edu/fp/lptestset.
   for f in brazil3; do
     wget -nv -O - "http://plato.asu.edu/ftp/lptestset/${f}.mps.bz2" | bzcat | \
          gzip > "${DEST_DIR}/${f}.mps.gz"
   done
 
-  # Discontinued gzipped "compressed MPS" instances from Mittelmann's lptestset.
+  # Discontinued gzipped "compressed MPS" instances from
+  # plato.asu.edu/fp/lptestset.
   for f in misc/neos1 misc/neos2 misc/watson_2 pds/pds-40; do
     instance="$(basename $f)"
     wget -nv -O - "http://plato.asu.edu/ftp/lptestset/${f}.gz" | zcat | \
          ./emps | gzip > "${DEST_DIR}/${instance}.mps.gz"
   done
 
-  # Discontinued gzipped "compressed MPS" instances from Mezaros's website.
+  # Discontinued gzipped "compressed MPS" instances from
+  # old.sztaki.hu/~meszaros.
   for f in misc/dbic1 misc/nug15 misc/stat96v4; do
     instance="$(basename $f)"
     wget -nv -O - \
