@@ -108,11 +108,11 @@ def label_lookup(label):
         if 'scaling' in label:
             st = '+ scaling'
         if 'primal weight' in label:
-            st = '+ primal weight'
+            st = '+ primal\nweight'
         if 'step size' in label:
-            st = '+ step-size'
+            st = '+ step\nsize'
         if 'pdlp_final' in label:
-            st = '+ presolve (= PDLP)'
+            st = '+ presolve\n(= PDLP)'
         return st
     if 'malitskypock' in label:
         if _BEST_STR in label:
@@ -391,7 +391,7 @@ def improvements_plot(dfs, prefix, key, ascending):
         normalized_dfs.append(df)
 
     df = pd.concat(normalized_dfs)
-    fig = plt.figure(figsize=(15, 9))
+    fig = plt.figure(figsize=(10, 6))
     for tol in df['tolerance'].unique():
         _df = df[df['tolerance'] == tol].reset_index(drop=True)
         plt.plot(
@@ -403,6 +403,7 @@ def improvements_plot(dfs, prefix, key, ascending):
         plt.ylabel('Normalized ' + key)
         plt.title(sanitize_title(prefix))
         plt.xticks(range(len(_df['Experiment'])), _df['Experiment'].to_list())
+
     if len(dfs) > 1:
         plt.legend(loc='best')
     name = key.replace(' ', '_')
@@ -651,6 +652,7 @@ for df in outputs.values():
 
 gen_all_improvement_plots(outputs, 'miplib_improvements')
 
+######################################################################
 
 # MITTELMAN bisco ablate improvements (JOIN DEFAULT)
 df_default_mittelmann = pd.read_csv(
