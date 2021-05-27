@@ -63,7 +63,7 @@ def label_lookup(label):
     if 'pdhg_enhanced' in label:
         return 'PDLP'
     if 'mirror-prox' in label:
-        return 'Enh. Mirror Prox'
+        return 'Enh. Extragradient'
     if 'pdhg_vanilla' in label:
         return 'PDHG'
     if 'scs-indirect' in label:
