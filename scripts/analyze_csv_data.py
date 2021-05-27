@@ -19,6 +19,7 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 plt.rcParams.update({'figure.max_open_warning': 0, 'font.size': 16})
 
 # directory where the csv files are located
@@ -403,6 +404,13 @@ def improvements_plot(dfs, prefix, key, ascending):
         plt.ylabel('Normalized ' + key)
         plt.title(sanitize_title(prefix))
         plt.xticks(range(len(_df['Experiment'])), _df['Experiment'].to_list())
+        ax = plt.gca()
+        ax.yaxis.set_major_locator(ticker.LogLocator(subs=[1, 2, 3, 5, 7]))
+        ax.yaxis.set_major_formatter(
+            ticker.LogFormatterSciNotation(
+                labelOnlyBase=False,
+                minor_thresholds=(4,2)))
+        # ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2f")
 
     if len(dfs) > 1:
         plt.legend(loc='best')
