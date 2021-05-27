@@ -54,6 +54,8 @@ _BEST_STR = '_best_str_'
 
 MITTELMANN_STR = 'lp_benchmark'
 
+LATEX_FONT_SIZE = '\\small'
+
 
 # Horrible HACK, but needs to be done
 def label_lookup(label):
@@ -212,6 +214,10 @@ def shifted_geomean(x, shift):
     sgm = np.exp(np.sum(np.log(x + shift) / len(x))) - shift
     return sgm if sgm > 0 else np.nan
 
+def change_table_font_size(table):
+    table = table.replace('\\begin{table}\n', '\\begin{table}\n' + LATEX_FONT_SIZE + '\n')
+    table = table.replace('\\caption{', '\\caption{' + LATEX_FONT_SIZE + ' ')
+    return table
 
 def gen_total_solved_problems_table(df, prefix, par):
     solved_probs = df[df['termination_reason'] == OPT] \
@@ -269,10 +275,11 @@ def gen_total_solved_problems_table(df, prefix, par):
         longtable=False,
         index=False,
         caption=f'Performance statistics: {sanitize_title(prefix)}',
-        label=f't:solved-probs',
+        label=f't:solved-probs-{prefix}',
         column_format='lccc',
         escape=False,
         na_rep='-')
+    table = change_table_font_size(table)
     path = os.path.join(TEX_DIR, f'{prefix}_solved_probs_table.tex')
     with open(path, "w") as f:
         f.write(table)
@@ -347,9 +354,10 @@ def gen_ratio_histograms(df, prefix, par):
                             longtable=False,
                             index=False,
                             caption=f'Performance ratio.',
-                            label=f't:solved-probs',
+                            label=f't:ratio-{prefix}',
                             column_format='lc',
                             na_rep='-')
+    table = change_table_font_size(table)
     path = os.path.join(TEX_DIR, f'{prefix}_({label_lookup(l0)}):'
                                  f'({label_lookup(l1)})_ratio_table.tex')
     with open(path, "w") as f:
@@ -515,7 +523,7 @@ df_stepsize = fill_in_missing_problems(df_stepsize, miplib_instances)
 
 df = pd.concat((df_stepsize, df_best_fixed, df_best_ind))
 gen_solved_problems_plots_split_tol(
-    df, 'miplib_malitskypock', len(miplib_instances))
+    df, 'miplib_stepsize', len(miplib_instances), True)
 gen_total_solved_problems_table_split_tol(df, 'miplib_stepsize', PAR)
 
 ######################################################################
@@ -577,7 +585,7 @@ gen_total_solved_problems_table_split_tol(df, 'miplib_restarts', PAR)
 
 ######################################################################
 
-# XXX merged into malitsky pock above:
+# merged into malitsky pock above:
 # bisco adaptive stepsize vs fixed stepsize (NO JOIN DEFAULT)
 #df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_stepsize_100k.csv'))
 #df = fill_in_missing_problems(df, miplib_instances)
@@ -608,7 +616,7 @@ df = pd.concat(df[df['experiment_label'].str.contains(e)]
                for e in PRIMALWEIGHT_EXPS_TO_USE)
 df = pd.concat((df, df_best_fixed))
 gen_solved_problems_plots_split_tol(
-    df, 'miplib_primalweight', len(miplib_instances))
+    df, 'miplib_primalweight', len(miplib_instances), True)
 gen_total_solved_problems_table_split_tol(df, 'miplib_primalweight', PAR)
 
 
