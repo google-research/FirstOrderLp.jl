@@ -62,7 +62,7 @@ def label_lookup(label):
     if 'pdhg_enhanced' in label:
         return 'PDLP'
     if 'mirror-prox' in label:
-        return 'Mirror Prox'
+        return 'Enh. Mirror Prox'
     if 'pdhg_vanilla' in label:
         return 'PDHG'
     if 'scs-indirect' in label:
@@ -127,6 +127,8 @@ def sanitize_title(title):
     title = title.replace('Miplib', 'MIPLIB')
     title = title.replace('Pdlp', 'PDLP')
     title = title.replace('Pdhg', 'PDHG')
+    title = title.replace('Scs', 'SCS')
+    title = title.replace('Sgm', 'SGM')
     return title
 
 
@@ -187,7 +189,7 @@ def gen_solved_problems_plots(df, prefix, num_instances, outer_legend=False):
     solved_problems_vs_xaxis_figs(
         optimal_dfs,
         'cumulative_kkt_matrix_passes',
-        'KKT matrix passes',
+        f'KKT matrix passes SGM{SGM_SHIFT}',
         prefix,
         num_instances,
         outer_legend)
@@ -214,10 +216,16 @@ def shifted_geomean(x, shift):
     sgm = np.exp(np.sum(np.log(x + shift) / len(x))) - shift
     return sgm if sgm > 0 else np.nan
 
+
 def change_table_font_size(table):
-    table = table.replace('\\begin{table}\n', '\\begin{table}\n' + LATEX_FONT_SIZE + '\n')
+    table = table.replace(
+        '\\begin{table}\n',
+        '\\begin{table}\n' +
+        LATEX_FONT_SIZE +
+        '\n')
     table = table.replace('\\caption{', '\\caption{' + LATEX_FONT_SIZE + ' ')
     return table
+
 
 def gen_total_solved_problems_table(df, prefix, par):
     solved_probs = df[df['termination_reason'] == OPT] \
@@ -307,10 +315,20 @@ def gen_ratio_histograms_split_tol(df, prefix, par):
     tols = df['tolerance'].unique()
     for t in tols:
         gen_ratio_histograms(df[df['tolerance'] == t],
-                             prefix + f'_tol_{t:.0E}', par)
+                             prefix + f'_tol_{t:.0E}',
+                             'cumulative_kkt_matrix_passes',
+                             f'KKT matrix passes SGM{SGM_SHIFT}',
+                             KKT_PASSES_LIMIT,
+                             par)
+        gen_ratio_histograms(df[df['tolerance'] == t],
+                             prefix + f'_tol_{t:.0E}',
+                             'solve_time_sec',
+                             'Wall-clock time (secs)',
+                             TIME_LIMIT_SECS,
+                             par)
 
 
-def gen_ratio_histograms(df, prefix, par):
+def gen_ratio_histograms(df, prefix, xaxis, xlabel, limit, par):
     assert len(df['experiment_label'].unique()) == 2
 
     (l0, l1) = df['experiment_label'].unique()
@@ -325,18 +343,14 @@ def gen_ratio_histograms(df, prefix, par):
         instance = df.instance_name.unique()
 
         if len(df0) == 1 and df0['termination_reason'].iloc[0] == OPT:
-            kkt_passes_0 = df0['cumulative_kkt_matrix_passes'].iloc[0]
+            kkt_passes_0 = df0[xaxis].iloc[0]
         else:
-            kkt_passes_0 = par * KKT_PASSES_LIMIT
-            if len(df0) == 0:
-                print(f'{l0} missing {instance}')
+            kkt_passes_0 = par * limit
 
         if len(df1) == 1 and df1['termination_reason'].iloc[0] == OPT:
-            kkt_passes_1 = df1['cumulative_kkt_matrix_passes'].iloc[0]
+            kkt_passes_1 = df1[xaxis].iloc[0]
         else:
-            kkt_passes_1 = par * KKT_PASSES_LIMIT
-            if len(df1) == 0:
-                print(f'{l1} missing {instance}')
+            kkt_passes_1 = par * limit
 
         # if (df['termination_reason'] != OPT).any():
         #    return np.nan
@@ -345,10 +359,13 @@ def gen_ratio_histograms(df, prefix, par):
     ratios = df.groupby(['instance_name']) \
         .apply(lambda _: performance_ratio_fn(_, par)) \
         .reset_index(name='ratio')
-    plt.figure()
-    plt.title(f'({label_lookup(l0)}):({label_lookup(l1)})')
-    plot_loghist(ratios['ratio'], 25)
-    path = os.path.join(FIGS_DIR, f'{prefix}_performance_ratio.pdf')
+    plt.figure(figsize=(10, 6))
+    plt.title(sanitize_title(
+        f'{prefix} {xlabel} {label_lookup(l0)}:{label_lookup(l1)}'))
+    plot_loghist(ratios['ratio'], min(len(ratios) // 3, 25))
+    path = os.path.join(
+        FIGS_DIR,
+        f'{prefix}_{l0}_{l1}_{xaxis}_performance_ratio.pdf')
     plt.savefig(path)
     table = ratios.to_latex(float_format="%.2f",
                             longtable=False,
@@ -358,12 +375,10 @@ def gen_ratio_histograms(df, prefix, par):
                             column_format='lc',
                             na_rep='-')
     table = change_table_font_size(table)
-    path = os.path.join(TEX_DIR, f'{prefix}_({label_lookup(l0)}):'
-                                 f'({label_lookup(l1)})_ratio_table.tex')
+    path = os.path.join(TEX_DIR, f'{prefix}_{l0}:'
+                                 f'{l1}_{xaxis}_ratio_table.tex')
     with open(path, "w") as f:
         f.write(table)
-    shift = 0.
-    gmean = shifted_geomean(ratios['ratio'], shift)
 
 # Unsolved problems might be missing from csv, make sure all are accounted for
 
@@ -414,27 +429,27 @@ def improvements_plot(dfs, prefix, key, ascending):
 
 
 def gen_all_improvement_plots(outputs, prefix):
-    for tol, df in outputs.items():
-        df = df.copy()
-        df['tolerance'] = tol
-        improvements_plot(
-            (df,),
-            prefix +
-            f'_tol_{tol:.0E}',
-            'KKT passes SGM10',
-            ascending=False)
-        improvements_plot(
-            (df,),
-            prefix +
-            f'_tol_{tol:.0E}',
-            'Solve time secs SGM10',
-            ascending=False)
-        improvements_plot(
-            (df,),
-            prefix +
-            f'_tol_{tol:.0E}',
-            'Solved count',
-            ascending=True)
+    # for tol, df in outputs.items():
+    #    df = df.copy()
+    #    df['tolerance'] = tol
+    #    improvements_plot(
+    #        (df,),
+    #        prefix +
+    #        f'_tol_{tol:.0E}',
+    #        'KKT passes SGM10',
+    #        ascending=False)
+    #    improvements_plot(
+    #        (df,),
+    #        prefix +
+    #        f'_tol_{tol:.0E}',
+    #        'Solve time secs SGM10',
+    #        ascending=False)
+    #    improvements_plot(
+    #        (df,),
+    #        prefix +
+    #        f'_tol_{tol:.0E}',
+    #        'Solved count',
+    #        ascending=True)
 
     dfs = []
     for tol, df in outputs.items():
@@ -492,6 +507,22 @@ gen_ratio_histograms_split_tol(df, 'miplib', PAR)
 
 ######################################################################
 
+df = pd.read_csv(os.path.join(CSV_DIR, 'mittelmann_pdhg_enhanced_100k.csv'))
+df = fill_in_missing_problems(df, mittelmann_instances)
+df_vanilla = pd.read_csv(
+    os.path.join(
+        CSV_DIR,
+        'mittelmann_improvements_100k.csv'))
+df_vanilla = df_vanilla[df_vanilla['enhancements'] == 'vanilla']
+df_vanilla = fill_in_missing_problems(df_vanilla, mittelmann_instances)
+df = pd.concat((df, df_vanilla))
+gen_solved_problems_plots_split_tol(
+    df, f'{MITTELMANN_STR}', len(miplib_instances))
+gen_total_solved_problems_table_split_tol(df, f'{MITTELMANN_STR}', PAR)
+gen_ratio_histograms_split_tol(df, f'{MITTELMANN_STR}', PAR)
+
+######################################################################
+
 # bisco pdhg vs malitsky-pock results (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_malitskypock_100k.csv'))
 mp_solved = df[df['termination_reason'] == OPT] \
@@ -539,6 +570,14 @@ gen_solved_problems_plots_split_tol(
     df, 'miplib_baselines', len(miplib_instances))
 gen_total_solved_problems_table_split_tol(df, 'miplib_baselines', PAR)
 
+df_pdhg_scs_dir = pd.concat(
+    (df_pdhg_mp[df_pdhg_mp['method'] == 'pdhg'], df_scs[df_scs['method'] == 'scs-direct']))
+df_pdhg_scs_indir = pd.concat(
+    (df_pdhg_mp[df_pdhg_mp['method'] == 'pdhg'], df_scs[df_scs['method'] == 'scs-indirect']))
+gen_ratio_histograms_split_tol(df_pdhg_mp, 'miplib', PAR)
+gen_ratio_histograms_split_tol(df_pdhg_scs_indir, 'miplib', PAR)
+gen_ratio_histograms_split_tol(df_pdhg_scs_dir, 'miplib', PAR)
+
 ######################################################################
 
 # bisco vs mp vs scs on MITTELMANN (JOIN PDHG/MP WITH SCS)
@@ -553,6 +592,15 @@ gen_solved_problems_plots_split_tol(
     len(mittelmann_instances))
 gen_total_solved_problems_table_split_tol(
     df, f'{MITTELMANN_STR}_baselines', PAR)
+
+df_pdhg_scs_dir = pd.concat(
+    (df_pdhg_mp[df_pdhg_mp['method'] == 'pdhg'], df_scs[df_scs['method'] == 'scs-direct']))
+df_pdhg_scs_indir = pd.concat(
+    (df_pdhg_mp[df_pdhg_mp['method'] == 'pdhg'], df_scs[df_scs['method'] == 'scs-indirect']))
+gen_ratio_histograms_split_tol(df_pdhg_mp, f'{MITTELMANN_STR}', PAR)
+gen_ratio_histograms_split_tol(df_pdhg_scs_indir, f'{MITTELMANN_STR}', PAR)
+gen_ratio_histograms_split_tol(df_pdhg_scs_dir, f'{MITTELMANN_STR}', PAR)
+
 
 ######################################################################
 
