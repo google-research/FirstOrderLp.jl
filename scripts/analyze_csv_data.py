@@ -424,7 +424,7 @@ def improvements_plot(dfs, prefix, key, ascending):
         ax.yaxis.set_major_formatter(
             ticker.LogFormatterSciNotation(
                 labelOnlyBase=False,
-                minor_thresholds=(4,2)))
+                minor_thresholds=(4, 2)))
         # ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2f")
 
     if len(dfs) > 1:
@@ -573,7 +573,10 @@ df_pdhg_mp = pd.read_csv(os.path.join(CSV_DIR, 'miplib_pdhg_mp_1h.csv'))
 df_pdhg_mp = fill_in_missing_problems(df_pdhg_mp, miplib_instances)
 df_scs = pd.read_csv(os.path.join(CSV_DIR, 'miplib_scs_1h.csv'))
 df_scs = fill_in_missing_problems(df_scs, miplib_instances)
-df = pd.concat((df_pdhg_mp, df_scs))
+df_pdhg_vanilla = pd.read_csv(os.path.join(
+    CSV_DIR, 'miplib_pdhg_vanilla_1h.csv'))
+df_pdhg_vanilla = fill_in_missing_problems(df_pdhg_vanilla, miplib_instances)
+df = pd.concat((df_pdhg_mp, df_pdhg_vanilla, df_scs))
 gen_solved_problems_plots_split_tol(
     df, 'miplib_baselines', len(miplib_instances))
 gen_total_solved_problems_table_split_tol(df, 'miplib_baselines', PAR)
@@ -591,9 +594,12 @@ gen_ratio_histograms_split_tol(df_pdhg_scs_dir, 'miplib', PAR)
 # bisco vs mp vs scs on MITTELMANN (JOIN PDHG/MP WITH SCS)
 df_pdhg_mp = pd.read_csv(os.path.join(CSV_DIR, 'mittelmann_pdhg_mp_1h.csv'))
 df_pdhg_mp = fill_in_missing_problems(df_pdhg_mp, mittelmann_instances)
+df_pdhg_vanilla = pd.read_csv(os.path.join(
+    CSV_DIR, 'mittelmann_pdhg_vanilla_1h.csv'))
+df_pdhg_vanilla = fill_in_missing_problems(df_pdhg_vanilla, miplib_instances)
 df_scs = pd.read_csv(os.path.join(CSV_DIR, 'mittelmann_scs_1h.csv'))
 df_scs = fill_in_missing_problems(df_scs, mittelmann_instances)
-df = pd.concat((df_pdhg_mp, df_scs))
+df = pd.concat((df_pdhg_mp, df_pdhg_vanilla, df_scs))
 gen_solved_problems_plots_split_tol(
     df,
     f'{MITTELMANN_STR}_baselines',
