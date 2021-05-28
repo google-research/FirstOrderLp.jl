@@ -20,7 +20,12 @@ import scipy.stats
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+from cycler import cycler
 plt.rcParams.update({'figure.max_open_warning': 0, 'font.size': 16})
+plt.rcParams['axes.prop_cycle'] = cycler(linestyle=['-', '--', ':', '-.', '-', '--', ':', '-.', '-', '--'],
+                                         color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',
+                                                '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'])
+
 
 # directory where the csv files are located
 CSV_DIR = './csv'
@@ -117,8 +122,8 @@ def label_lookup(label):
         return st
     if 'malitskypock' in label:
         if _BEST_STR in label:
-            return 'Best per-instance Malitsky-Pock settings'
-        return 'Best fixed Malitsky-Pock setting'
+            return 'Best per-instance MP settings'
+        return 'Best fixed MP setting'
     return label
 
 
@@ -525,7 +530,7 @@ df_vanilla = df_vanilla[df_vanilla['enhancements'] == 'vanilla']
 df_vanilla = fill_in_missing_problems(df_vanilla, mittelmann_instances)
 df = pd.concat((df, df_vanilla))
 gen_solved_problems_plots_split_tol(
-    df, f'{MITTELMANN_STR}', len(miplib_instances))
+    df, f'{MITTELMANN_STR}', len(mittelmann_instances))
 gen_total_solved_problems_table_split_tol(df, f'{MITTELMANN_STR}', PAR)
 gen_ratio_histograms_split_tol(df, f'{MITTELMANN_STR}', PAR)
 
@@ -563,7 +568,7 @@ df_stepsize = fill_in_missing_problems(df_stepsize, miplib_instances)
 
 df = pd.concat((df_stepsize, df_best_fixed, df_best_ind))
 gen_solved_problems_plots_split_tol(
-    df, 'miplib_stepsize', len(miplib_instances), True)
+    df, 'miplib_stepsize', len(miplib_instances), False)
 gen_total_solved_problems_table_split_tol(df, 'miplib_stepsize', PAR)
 
 ######################################################################
