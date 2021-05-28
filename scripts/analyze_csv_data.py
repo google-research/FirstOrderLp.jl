@@ -22,9 +22,29 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from cycler import cycler
 plt.rcParams.update({'figure.max_open_warning': 0, 'font.size': 16})
-plt.rcParams['axes.prop_cycle'] = cycler(linestyle=['-', '--', ':', '-.', '-', '--', ':', '-.', '-', '--'],
-                                         color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',
-                                                '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'])
+plt.rcParams['axes.prop_cycle'] = cycler(
+    linestyle=[
+        '-',
+        '--',
+        ':',
+        '-.',
+        '-',
+        '--',
+        ':',
+        '-.',
+        '-',
+        '--'],
+    color=[
+        '#1f77b4',
+        '#ff7f0e',
+        '#2ca02c',
+        '#d62728',
+        '#9467bd',
+        '#8c564b',
+        '#e377c2',
+        '#7f7f7f',
+        '#bcbd22',
+        '#17becf'])
 
 
 # directory where the csv files are located
@@ -61,6 +81,14 @@ _BEST_STR = '_best_str_'
 MITTELMANN_STR = 'lp_benchmark'
 
 LATEX_FONT_SIZE = '\\small'
+
+
+_PDHG = 'PDHG'
+_RESTARTS = '+ restarts'
+_SCALING = '+ scaling'
+_PRIMAL_WEIGHT = '+ primal\nweight'
+_STEPSIZE = '+ step\nsize'
+_PRESOLVE = '+ presolve\n(= PDLP)'
 
 
 # Horrible HACK, but needs to be done
@@ -107,18 +135,18 @@ def label_lookup(label):
             return 'Best per-instance fixed primal weight'
     if 'improvements' in label:
         if 'vanilla' in label:
-            return 'PDHG'
+            return _PDHG
         st = ''
         if 'restarts' in label:
-            st = '+ restarts'
+            st = _RESTARTS
         if 'scaling' in label:
-            st = '+ scaling'
+            st = _SCALING
         if 'primal weight' in label:
-            st = '+ primal\nweight'
+            st = _PRIMAL_WEIGHT
         if 'step size' in label:
-            st = '+ step\nsize'
+            st = _STEPSIZE
         if 'pdlp_final' in label:
-            st = '+ presolve\n(= PDLP)'
+            st = _PRESOLVE
         return st
     if 'malitskypock' in label:
         if _BEST_STR in label:
@@ -655,10 +683,10 @@ gen_total_solved_problems_table_split_tol(df, 'miplib_restarts', PAR)
 
 # merged into malitsky pock above:
 # bisco adaptive stepsize vs fixed stepsize (NO JOIN DEFAULT)
-#df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_stepsize_100k.csv'))
-#df = fill_in_missing_problems(df, miplib_instances)
-#gen_solved_problems_plots_split_tol(df, 'miplib_stepsize', len(miplib_instances))
-#gen_total_solved_problems_table_split_tol(df, 'miplib_stepsize', PAR)
+# df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_stepsize_100k.csv'))
+# df = fill_in_missing_problems(df, miplib_instances)
+# gen_solved_problems_plots_split_tol(df, 'miplib_stepsize', len(miplib_instances))
+# gen_total_solved_problems_table_split_tol(df, 'miplib_stepsize', PAR)
 
 ######################################################################
 
@@ -691,13 +719,15 @@ gen_total_solved_problems_table_split_tol(df, 'miplib_primalweight', PAR)
 ######################################################################
 
 improvements_order = [
-    'PDHG',
-    '+ restarts',
-    '+ scaling',
-    '+ primal weight',
-    '+ step-size',
-    '+ presolve (= PDLP)']
+    _PDHG,
+    _RESTARTS,
+    _SCALING,
+    _PRIMAL_WEIGHT,
+    _STEPSIZE,
+    _PRESOLVE]
 order_idx = dict(zip(improvements_order, range(len(improvements_order))))
+
+######################################################################
 
 # MIPLIB bisco ablate improvements (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_improvements_100k.csv'))
