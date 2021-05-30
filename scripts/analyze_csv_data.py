@@ -131,7 +131,7 @@ def label_lookup(label):
         if 'adaptive' in label:
             return 'PDLP'
         if 'Fixed 1e-0' in label:
-            return r'Fixed ($\theta=0$)'
+            return r'Fixed PW ($\theta=0$)'
         if _BEST_STR in label:
             return 'Best per-instance PW'
     if 'improvements' in label:
