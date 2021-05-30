@@ -131,9 +131,9 @@ def label_lookup(label):
         if 'adaptive' in label:
             return 'PDLP'
         if 'Fixed 1e-0' in label:
-            return r'Fixed primal weight ($\theta=0$)'
+            return r'Fixed ($\theta=0$)'
         if _BEST_STR in label:
-            return 'Best per-instance fixed primal weight'
+            return 'Best per-instance PW'
     if 'improvements' in label:
         if 'vanilla' in label:
             return _PDHG
@@ -713,7 +713,7 @@ df = pd.concat(df[df['experiment_label'].str.contains(e)]
                for e in PRIMALWEIGHT_EXPS_TO_USE)
 df = pd.concat((df, df_best_fixed))
 gen_solved_problems_plots_split_tol(
-    df, f'{MIPLIB_STR}_primalweight', len(miplib_instances), True)
+    df, f'{MIPLIB_STR}_primalweight', len(miplib_instances), False)
 gen_total_solved_problems_table_split_tol(df, f'{MIPLIB_STR}_primalweight', PAR)
 
 
