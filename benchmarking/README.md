@@ -122,15 +122,22 @@ into a CSV file for analysis.
 For example (from the `FirstOrderLp.jl` root directory),
 
 ```sh
-$ julia --project=scripts scripts/solve_qp.jl \
---instance_path test/trivial_lp_model.mps --method pdhg \
---output_dir /tmp/first_order_lp_solve
-$ julia --project=scripts scripts/solve_lp_external.jl \
---instance_path test/trivial_lp_model.mps --solver scs-indirect \
---tolerance 1e-7 --output_dir /tmp/scs_solve
+$ benchmarking/collect_mittelmann_benchmark.sh /tmp ~/mittelmann_benchmark
+$ for INSTANCE in nug08-3rd qap15
+do
+  julia --project=scripts scripts/solve_qp.jl \
+    --instance_path ~/mittelmann_benchmark/$INSTANCE.mps.gz --method pdhg \
+    --output_dir /tmp/first_order_lp_solve_$INSTANCE
+  julia --project=scripts scripts/solve_lp_external.jl \
+    --instance_path ~/mittelmann_benchmark/$INSTANCE.mps.gz --solver scs-indirect \
+    --tolerance 1e-7 --output_dir /tmp/scs_solve_$INSTANCE
+done
 $ echo '{"datasets": [
-   {"name": "pdhg", "logs_directory": "/tmp/first_order_lp_solve"},
-   {"name": "scs", "logs_directory": "/tmp/scs_solve"}]}' >/tmp/layout.json
+   {"name": "pdhg nug08-3rd", "logs_directory": "/tmp/first_order_lp_solve_nug08-3rd"},
+   {"name": "scs nug08-3rd", "logs_directory": "/tmp/scs_solve_nug08-3rd"},
+   {"name": "pdhg qap15", "logs_directory": "/tmp/first_order_lp_solve_qap15"},
+   {"name": "scs qap15", "logs_directory": "/tmp/scs_solve_qap15"}
+]}' >/tmp/layout.json
 $ julia --project=benchmarking benchmarking/process_json_to_csv.jl \
 /tmp/layout.json /tmp/dataset.csv
 ```
