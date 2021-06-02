@@ -22,6 +22,8 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from cycler import cycler
 plt.rcParams.update({'figure.max_open_warning': 0, 'font.size': 16})
+
+# This is required to generate plots that are easy to read when printed:
 plt.rcParams['axes.prop_cycle'] = cycler(
     linestyle=[
         '-',
@@ -63,6 +65,7 @@ SGM_SHIFT = int(10)
 # penalised average runtime:
 PAR = 1.  # can be None, which removes unsolved instead of penalizing
 
+# Which scaling experiments to present
 SCALING_EXPS_TO_USE = [
     'off,off',
     'off,pock_chambolle alpha=1',
@@ -70,6 +73,7 @@ SCALING_EXPS_TO_USE = [
     '10 rounds,pock_chambolle alpha=1',
 ]
 
+# Which primal-weight experiments to present
 PRIMALWEIGHT_EXPS_TO_USE = [
     'adaptive',
     'Fixed 1e-0',
@@ -78,18 +82,31 @@ PRIMALWEIGHT_EXPS_TO_USE = [
 # placeholder:
 _BEST_STR = '_best_str_'
 
+# Dataset names:
 MITTELMANN_STR = 'lp_benchmark'
 MIPLIB_STR = 'mip_relaxations'
 
+# Change table font size to fit paper:
 LATEX_FONT_SIZE = '\\small'
 
-
+# Naming for improvements plots:
 _PDHG = 'PDHG'
 _RESTARTS = '+ restarts'
 _SCALING = '+ scaling'
 _PRIMAL_WEIGHT = '+ primal\nweight'
 _STEPSIZE = '+ step\nsize'
 _PRESOLVE = '+ presolve\n(= PDLP)'
+
+# Order in which improvements should appear:
+IMPROVEMENTS_ORDER = [
+    _PDHG,
+    _RESTARTS,
+    _SCALING,
+    _PRIMAL_WEIGHT,
+    _STEPSIZE,
+    _PRESOLVE]
+IMPROVEMENTS_ORDER_IDX = dict(
+    zip(IMPROVEMENTS_ORDER, range(len(IMPROVEMENTS_ORDER))))
 
 
 # Horrible HACK, but needs to be done
@@ -167,6 +184,7 @@ def sanitize_title(title):
     return title
 
 
+# Generate plots of xaxis vs fraction of solved problems
 def solved_problems_vs_xaxis_figs(
         dfs,
         xaxis,
@@ -313,7 +331,20 @@ def gen_total_solved_problems_table(df, prefix, par):
         output.loc[output['Experiment'] == e, 'Experiment'] = label_lookup(e)
 
     output = output.sort_values('Solved count', ascending=True)
-    table = output.to_latex(
+
+    # HACK to fix improvements table ordering and line break
+    if 'improvements' in prefix:
+        output['rank'] = output['Experiment'].map(IMPROVEMENTS_ORDER_IDX)
+        output.sort_values('rank', inplace=True)
+        output.drop('rank', 1, inplace=True)
+        to_write = output.copy()
+        for e in to_write['Experiment']:
+            to_write.loc[to_write['Experiment'] == e,
+                         'Experiment'] = e.replace('\n', ' ')
+    else:
+        to_write = output
+
+    table = to_write.to_latex(
         float_format="%.1f",
         longtable=False,
         index=False,
@@ -471,28 +502,6 @@ def improvements_plot(dfs, prefix, key, ascending):
 
 
 def gen_all_improvement_plots(outputs, prefix):
-    # for tol, df in outputs.items():
-    #    df = df.copy()
-    #    df['tolerance'] = tol
-    #    improvements_plot(
-    #        (df,),
-    #        prefix +
-    #        f'_tol_{tol:.0E}',
-    #        'KKT passes SGM10',
-    #        ascending=False)
-    #    improvements_plot(
-    #        (df,),
-    #        prefix +
-    #        f'_tol_{tol:.0E}',
-    #        'Solve time secs SGM10',
-    #        ascending=False)
-    #    improvements_plot(
-    #        (df,),
-    #        prefix +
-    #        f'_tol_{tol:.0E}',
-    #        'Solved count',
-    #        ascending=True)
-
     dfs = []
     for tol, df in outputs.items():
         df = df.copy()
@@ -682,15 +691,6 @@ gen_total_solved_problems_table_split_tol(df, f'{MIPLIB_STR}_restarts', PAR)
 
 ######################################################################
 
-# merged into malitsky pock above:
-# bisco adaptive stepsize vs fixed stepsize (NO JOIN DEFAULT)
-# df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_stepsize_100k.csv'))
-# df = fill_in_missing_problems(df, miplib_instances)
-# gen_solved_problems_plots_split_tol(df, f'{MIPLIB_STR}_stepsize', len(miplib_instances))
-# gen_total_solved_problems_table_split_tol(df, f'{MIPLIB_STR}_stepsize', PAR)
-
-######################################################################
-
 # bisco primalweight (NO JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_primalweight_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
@@ -714,19 +714,9 @@ df = pd.concat(df[df['experiment_label'].str.contains(e)]
 df = pd.concat((df, df_best_fixed))
 gen_solved_problems_plots_split_tol(
     df, f'{MIPLIB_STR}_primalweight', len(miplib_instances), False)
-gen_total_solved_problems_table_split_tol(df, f'{MIPLIB_STR}_primalweight', PAR)
+gen_total_solved_problems_table_split_tol(
+    df, f'{MIPLIB_STR}_primalweight', PAR)
 
-
-######################################################################
-
-improvements_order = [
-    _PDHG,
-    _RESTARTS,
-    _SCALING,
-    _PRIMAL_WEIGHT,
-    _STEPSIZE,
-    _PRESOLVE]
-order_idx = dict(zip(improvements_order, range(len(improvements_order))))
 
 ######################################################################
 
@@ -742,11 +732,6 @@ gen_solved_problems_plots_split_tol(
     df, f'{MIPLIB_STR}_improvements', len(miplib_instances), True)
 outputs = gen_total_solved_problems_table_split_tol(
     df, f'{MIPLIB_STR}_improvements', PAR)
-
-for df in outputs.values():
-    df['rank'] = df['Experiment'].map(order_idx)
-    df.sort_values('rank', inplace=True)
-    df.drop('rank', 1, inplace=True)
 
 gen_all_improvement_plots(outputs, f'{MIPLIB_STR}_improvements')
 
@@ -776,7 +761,7 @@ outputs = gen_total_solved_problems_table_split_tol(
     df, f'{MITTELMANN_STR}_improvements', PAR)
 
 for df in outputs.values():
-    df['rank'] = df['Experiment'].map(order_idx)
+    df['rank'] = df['Experiment'].map(IMPROVEMENTS_ORDER_IDX)
     df.sort_values('rank', inplace=True)
     df.drop('rank', 1, inplace=True)
 
