@@ -19,7 +19,7 @@
 
 
 if [[ "$#" != 1 ]]; then
-    echo "Usage: collect_LIBSVM.sh output_dir" 1>&2
+    echo "Usage: collect_LIBSVM.sh output_directory" 1>&2
     exit 1
 fi
 

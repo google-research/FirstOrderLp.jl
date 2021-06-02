@@ -26,7 +26,8 @@
 #     http://plato.asu.edu/ftp/network.html
 
 if [[ "$#" != 2 ]]; then
-  echo "Usage: collect_lp_benchmark.sh temporary_dir output_dir" 1>&2
+  echo "Usage: collect_lp_benchmark.sh temporary_directory" \
+    "output_directory" 1>&2
   exit 1
 fi
 
