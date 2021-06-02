@@ -13,10 +13,14 @@
 # limitations under the License.
 
 #  This script generates all the experimental results used in the paper.
+#  It requires numpy, pandas, and matplotlib installed to run.
+#
+#   `python analyze_csv_data.py`
+#
+
 
 import os
 import numpy as np
-import scipy.stats
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -265,7 +269,6 @@ def gen_solved_problems_plots_split_tol(
 
 def shifted_geomean(x, shift):
     x = x[~np.isnan(x)]
-    # return scipy.stats.mstats.gmean(x)
     sgm = np.exp(np.sum(np.log(x + shift) / len(x))) - shift
     return sgm if sgm > 0 else np.nan
 
