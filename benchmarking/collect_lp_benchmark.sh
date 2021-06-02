@@ -36,11 +36,11 @@ DEST_DIR="$2"
 mkdir -p "${TEMP_DIR}" || exit 1
 mkdir -p "${DEST_DIR}" || exit 1
 
-cd "${TEMP_DIR}"
-
 # Instances from miplib2010.
-wget http://miplib2010.zib.de/download/miplib2010-1.1.3-complete.tgz
-tar xzf miplib2010-1.1.3-complete.tgz -C "${DEST_DIR}" --strip-components 3 \
+wget --directory-prefix="${TEMP_DIR}" \
+  http://miplib2010.zib.de/download/miplib2010-1.1.3-complete.tgz || exit 1
+tar xzf "${TEMP_DIR}/miplib2010-1.1.3-complete.tgz" -C "${DEST_DIR}" \
+  --strip-components 3 \
   miplib2010-1.1.3/instances/miplib2010/buildingenergy.mps.gz \
   miplib2010-1.1.3/instances/miplib2010/ds-big.mps.gz \
   miplib2010-1.1.3/instances/miplib2010/rail02.mps.gz \
@@ -76,13 +76,13 @@ mv "${DEST_DIR}/tpl-tub-ws1617_lp.mps.gz" "${DEST_DIR}/tpl-tub-ws16.mps.gz"
 
 # Download and compile the netlib tool for uncompressing files in the
 # "compressed MPS" format.
-wget -nv http://www.netlib.org/lp/data/emps.c
-cc -O3 -o emps emps.c
+wget --directory-prefix="${TEMP_DIR}" -nv http://www.netlib.org/lp/data/emps.c
+cc -O3 -o "${TEMP_DIR}/emps" "${TEMP_DIR}/emps.c"
 
 # bzipped "compressed MPS" instances from plato.asu.edu/fp/lptestset.
 for f in L1_sixm250obs L1_sixm1000obs Linf_520c; do
   wget -nv -O - "http://plato.asu.edu/ftp/lptestset/${f}.bz2" | bzcat | \
-       ./emps | gzip > "${DEST_DIR}/${f}.mps.gz"
+      "${TEMP_DIR}/emps" | gzip > "${DEST_DIR}/${f}.mps.gz"
 done
 
 # gzipped "compressed MPS" instances from plato.asu.edu/fp/lptestset.
@@ -91,7 +91,7 @@ for f in fome/fome13 misc/cont1 misc/cont11 misc/neos misc/neos3 \
     rail/rail4284; do
   instance="$(basename $f)"
   wget -nv -O - "http://plato.asu.edu/ftp/lptestset/${f}.gz" | zcat | \
-       ./emps | gzip > "${DEST_DIR}/${instance}.mps.gz"
+      "${TEMP_DIR}/emps" | gzip > "${DEST_DIR}/${instance}.mps.gz"
 done
 
 # gzipped mps network instances from plato.asu.edu/fp/lptestset.
@@ -107,7 +107,7 @@ for f in infeas/self misc/stat96v1 New/degme New/karted New/tp-6 \
   instance="$(basename $f)"
   wget -nv -O - \
       "http://old.sztaki.hu/~meszaros/public_ftp/lptestset/${f}.gz" | zcat | \
-    ./emps | gzip > "${DEST_DIR}/${instance}.mps.gz"
+      "${TEMP_DIR}/emps" | gzip > "${DEST_DIR}/${instance}.mps.gz"
 done
 
 # The remaining script covers instances that are no longer included in
@@ -115,8 +115,9 @@ done
 
 if false; then
   # Discontinued instances from miplib2010.
-  tar xzf miplib2010-1.1.3-complete.tgz -C "${DEST_DIR}" --strip-components 3 \
-    miplib2010-1.1.3/instances/miplib2010/ns1644855.mps.gz
+  tar xzf "${TEMP_DIR}/miplib2010-1.1.3-complete.tgz" -C "${DEST_DIR}" \
+      --strip-components 3 \
+      miplib2010-1.1.3/instances/miplib2010/ns1644855.mps.gz
 
   # Discontinued bzipped MPS instances from plato.asu.edu/fp/lptestset.
   for f in brazil3; do
@@ -129,7 +130,7 @@ if false; then
   for f in misc/neos1 misc/neos2 misc/watson_2 pds/pds-40; do
     instance="$(basename $f)"
     wget -nv -O - "http://plato.asu.edu/ftp/lptestset/${f}.gz" | zcat | \
-         ./emps | gzip > "${DEST_DIR}/${instance}.mps.gz"
+        "${TEMP_DIR}/emps" | gzip > "${DEST_DIR}/${instance}.mps.gz"
   done
 
   # Discontinued gzipped "compressed MPS" instances from
@@ -138,6 +139,6 @@ if false; then
     instance="$(basename $f)"
     wget -nv -O - \
         "http://old.sztaki.hu/~meszaros/public_ftp/lptestset/${f}.gz" | zcat | \
-      ./emps | gzip > "${DEST_DIR}/${instance}.mps.gz"
+        "${TEMP_DIR}/emps" | gzip > "${DEST_DIR}/${instance}.mps.gz"
   done
 fi
