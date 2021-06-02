@@ -43,13 +43,19 @@ linear programming benchmark sites
 3. Download and build PaPILO from https://github.com/lgottwald/PaPILO.
 4. From the local directory, run `./preprocess.sh`.
 
+`collect_lp_benchmark.sh` has the following argument structure:
+
+```sh
+$ ./collect_lp_benchmark.sh temporary_directory output_directory
+```
+
 For example, assuming you have already instantiated the packages and built
 PaPILO,
 
 ```sh
-$ ./collect_lp_benchmark.sh /tmp ~/lp_benchmark
-$ ./preprocess.sh ~/lp_benchmark ./lp_benchmark_instance_list \
-    ~/lp_benchmark_preprocessed ~/PaPILO/build/bin/papilo
+$ ./collect_lp_benchmark.sh /tmp "${HOME}/lp_benchmark"
+$ ./preprocess.sh "${HOME}/lp_benchmark" ./lp_benchmark_instance_list \
+    "${HOME}/lp_benchmark_preprocessed" "${HOME}/PaPILO/build/bin/papilo"
 ```
 
 ## L1 SVM
@@ -67,10 +73,10 @@ https://papers.nips.cc/paper/2003/file/49d4b2faeb4b7b9e745775793141e2b2-Paper.pd
 For example,
 
 ```sh
-$ ./collect_LIBSVM.sh ${HOME}/LIBSVM
+$ ./collect_LIBSVM.sh "${HOME}/LIBSVM"
 $ julia --project=. generate_l1_svm_lp.jl \
---input_filename=${HOME}/LIBSVM/duke \
-	  --output_filename=${HOME}/LIBSVM/duke.mps.gz --regularizer_weight=1.0
+    --input_filename="${HOME}/LIBSVM/duke" \
+    --output_filename="${HOME}/LIBSVM/duke.mps.gz" --regularizer_weight=1.0
 ```
 
 ## Pagerank instances
@@ -90,7 +96,7 @@ For example,
 ```sh
 $ julia --project=. generate_pagerank_lp.jl --num_nodes 10000 \
     --approx_num_edges 30000 --random_seed 1 \
-    --output_filename ~/pagerank.10k.mps.gz
+    --output_filename "${HOME}/pagerank.10k.mps.gz"
 ```
 ## Procesing JSON results
 
