@@ -3,14 +3,26 @@
 This directory contains scripts for generating datasets and processing results
 for benchmarking FirstOrderLp.
 
-## Filtered and preprocessed MIPLIB 2017 collection dataset
+## Filtered and preprocessed MIP relaxations dataset
+
+This dataset is extracted from the MIPLIB 2017 collection, filtered as specified
+in `mip_relaxations_instance_list`.
 
 1. From the local directory, instantiate the necessary packages by running
    `julia --project=. -e 'import Pkg; Pkg.instantiate()'`.
-2. Download the MIPLIB 2017 collection from
-   https://miplib.zib.de/downloads/collection.zip. Unzip it locally.
+2. Download the benchmark instances. Either run
+   `./collect_mip_relaxations.sh` or follow its steps for downloading the
+   instances from the MIPLIB 2017 collection and extracting the benchmark
+   dataset.
 3. Download and build PaPILO from https://github.com/lgottwald/PaPILO.
 4. From the local directory, run `./preprocess.sh`.
+
+`collect_mip_relaxations.sh` has the following argument structure:
+
+```sh
+$ ./collect_mip_relaxations.sh temporary_directory benchmark_instance_list \
+    output_directory
+```
 
 `preprocess.sh` has the following argument structure:
 
@@ -19,11 +31,14 @@ $ ./preprocess.sh path_to_benchmark benchmark_instance_list output_directory \
     path_to_papilo_binary
 ```
 
-For example:
+For example, assuming you have already instantiated the packages and built
+PaPILO,
 
 ```sh
-$ ./preprocess.sh ~/miplib2017_collection ./miplib2017_instance_list \
-    ~/miplib2017_preprocessed ~/PaPILO/build/bin/papilo
+$ ./collect_mip_relaxations.sh /tmp ./mip_relaxations_instance_list \
+    "${HOME}/mip_relaxations"
+$ ./preprocess.sh "${HOME}/mip_relaxations" ./mip_relaxations_instance_list \
+    "${HOME}/mip_relaxations_preprocessed" "${HOME}/PaPILO/build/bin/papilo"
 ```
 
 ## Preprocessed LP benchmark dataset
