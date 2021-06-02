@@ -43,4 +43,6 @@ done
 wget --directory-prefix="${TEMP_DIR}" \
   https://miplib.zib.de/downloads/collection.zip || exit 1
 
-unzip -d "${DEST_DIR}" "${TEMP_DIR}/collection.zip" "${filenames[@]}"
+unzip -d "${DEST_DIR}" "${TEMP_DIR}/collection.zip" "${filenames[@]}" || exit 1
+
+rm "${TEMP_DIR}/collection.zip"
