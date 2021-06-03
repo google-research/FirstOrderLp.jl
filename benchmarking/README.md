@@ -122,15 +122,15 @@ into a CSV file for analysis.
 For example (from the `FirstOrderLp.jl` root directory),
 
 ```sh
-$ benchmarking/collect_lp_benchmark.sh /tmp ~/lp_benchmark
+$ benchmarking/collect_lp_benchmark.sh /tmp ${HOME}/lp_benchmark
 $ for INSTANCE in nug08-3rd qap15
 do
   julia --project=scripts scripts/solve_qp.jl \
-    --instance_path ~/lp_benchmark/${INSTANCE}.mps.gz --method pdhg \
+    --instance_path ${HOME}/lp_benchmark/${INSTANCE}.mps.gz --method pdhg \
     --output_dir /tmp/first_order_lp_solve \
     --relative_optimality_tol 1e-4 --absolute_optimality_tol 1e-4
   julia --project=scripts scripts/solve_lp_external.jl \
-    --instance_path ~/lp_benchmark/${INSTANCE}.mps.gz --solver scs-indirect \
+    --instance_path ${HOME}/lp_benchmark/${INSTANCE}.mps.gz --solver scs-indirect \
     --output_dir /tmp/scs_solve --tolerance 1e-4
 done
 $ echo '{"datasets": [
