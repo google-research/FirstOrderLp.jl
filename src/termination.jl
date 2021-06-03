@@ -36,7 +36,7 @@ mutable struct TerminationCriteria
   # | primal_objective - dual_objective | <= eps_optimal_absolute +
   #  eps_optimal_relative * ( | primal_objective | + | dual_objective | )
   # norm(primal_residual, p) <= eps_optimal_absolute + eps_optimal_relative *
-  #  norm(right_hand_side^c, p)
+  #  norm(right_hand_side, p)
   # norm(dual_residual, p) <= eps_optimal_absolute + eps_optimal_relative *
   #   norm(objective_vector, p)
   # It is possible to prove that a solution satisfying the above conditions

@@ -144,11 +144,19 @@ struct PdhgParameters
   pock_chambolle_alpha::Union{Float64,Nothing}
 
   """
-  Used to bias the computation of the primal/dual balancing parameter
-  primal_weight. Must be positive. A value of 1 balances primal and dual
-  equally.
+  Used to bias the initial value of the primal/dual balancing parameter
+  primal_weight. Must be positive. See also
+  scale_invariant_initial_primal_weight.
   """
   primal_importance::Float64
+
+  """
+  If true, computes the initial primal weight with a scale-invariant formula
+  biased by primal_importance; see select_initial_primal_weight() for more
+  details. If false, primal_importance itself is used as the initial primal
+  weight.
+  """
+  scale_invariant_initial_primal_weight::Bool
 
   """
   If >= 4 a line of debugging info is printed during some iterations. If >= 2
@@ -605,8 +613,18 @@ function take_step(
     # sizes cancel out.
     if step_size * norm(delta_dual_product) <=
        step_params.breaking_factor * norm(delta_dual)
-      # TODO: Implement nonsymmetric weighted average (See Theorem 2 of
-      # https://arxiv.org/pdf/1608.08883.pdf)
+      # Malitsky and Pock guarantee uses a nonsymmetric weighted average, the
+      # primal variable average involves the initial point, while the dual
+      # doesn't. See Theorem 2 in https://arxiv.org/pdf/1608.08883.pdf for
+      # details.
+      if solver_state.solution_weighted_avg.sum_primal_solutions_count == 0
+        add_to_primal_solution_weighted_average(
+          solver_state.solution_weighted_avg,
+          solver_state.current_primal_solution,
+          step_size * ratio_step_sizes,
+        )
+      end
+
       update_solution_in_solver_state(
         solver_state,
         next_primal,
@@ -825,13 +843,17 @@ function optimize(
   # In practice this number is four.
   KKT_PASSES_PER_TERMINATION_EVALUATION = 2.0
 
-  solver_state.primal_weight = select_initial_primal_weight(
-    problem,
-    ones(primal_size),
-    ones(dual_size),
-    params.primal_importance,
-    params.verbosity,
-  )
+  if params.scale_invariant_initial_primal_weight
+    solver_state.primal_weight = select_initial_primal_weight(
+      problem,
+      ones(primal_size),
+      ones(dual_size),
+      params.primal_importance,
+      params.verbosity,
+    )
+  else
+    solver_state.primal_weight = params.primal_importance
+  end
 
   primal_weight_update_smoothing =
     params.restart_params.primal_weight_update_smoothing
@@ -877,7 +899,8 @@ function optimize(
         KKT_PASSES_PER_TERMINATION_EVALUATION
       # Compute the average solution since the last restart point.
       if solver_state.numerical_error ||
-         solver_state.solution_weighted_avg.sum_solutions_count == 0
+         solver_state.solution_weighted_avg.sum_primal_solutions_count == 0 ||
+         solver_state.solution_weighted_avg.sum_dual_solutions_count == 0
         avg_primal_solution = solver_state.current_primal_solution
         avg_dual_solution = solver_state.current_dual_solution
       else
