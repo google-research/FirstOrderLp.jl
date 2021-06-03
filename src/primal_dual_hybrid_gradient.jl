@@ -19,14 +19,16 @@ Parameters of the Malitsky and Pock lineseach algorithm
 struct MalitskyPockStepsizeParameters
 
   """
-  Contraction factor by which the step size is multiplied for in the inner
-  loop. Valid values: interval (0, 1). Corresponds to mu in the paper.
+  Factor by which the step size is multiplied for in the inner loop.
+  Valid values: interval (0, 1). Corresponds to mu in the paper.
   """
-  contraction_factor::Float64
+  downscaling_factor::Float64
 
+  # Y. Malitsky notes that while the theory requires the value to be strictly
+  # less than 1, a value of 1 should work fine in practice.
   """
   Breaking factor that defines the stopping criteria of the linesearch.
-  Valid values: interval (0, 1). Corresponds to delta in the paper.
+  Valid values: interval (0, 1]. Corresponds to delta in the paper.
   """
   breaking_factor::Float64
 
@@ -472,8 +474,8 @@ function compute_next_dual_solution(
   #           + 0.5*norm_Y(y-current_dual_solution)^2]
   dual_gradient = compute_dual_gradient(
     problem,
-    next_primal +
-    extrapolation_coefficient * (next_primal - current_primal_solution),
+    next_primal .+
+    extrapolation_coefficient .* (next_primal - current_primal_solution),
   )
   next_dual =
     current_dual_solution .+ (primal_weight * step_size) .* dual_gradient
@@ -522,8 +524,12 @@ function compute_interaction_and_movement(
 )
   delta_primal = next_primal .- solver_state.current_primal_solution
   delta_dual = next_dual .- solver_state.current_dual_solution
-  primal_objective_interaction =
-    0.5 * (delta_primal' * problem.objective_matrix * delta_primal)
+  if iszero(problem.objective_matrix)
+    primal_objective_interaction = 0.0
+  else
+    primal_objective_interaction =
+      0.5 * (delta_primal' * problem.objective_matrix * delta_primal)
+  end
   primal_dual_interaction =
     delta_primal' * (next_dual_product .- solver_state.current_dual_product)
   interaction = abs(primal_dual_interaction) + abs(primal_objective_interaction)
@@ -592,7 +598,7 @@ function take_step(
     solver_state.cumulative_kkt_passes += 0.5
 
     # The primal weight does not play a role in this condition. As noted in the
-    # paper (See secont paragrah of Section 2 in https://arxiv.org/pdf/1608.08883.pdf)
+    # paper (See second paragraph of Section 2 in https://arxiv.org/pdf/1608.08883.pdf)
     # the coefficient on left-hand-side is equal to
     # sqrt(<primal_step_size> * <dual_step_size>) = step_size.
     # where the equality follows since the primal_weight in the primal and dual step
@@ -608,8 +614,9 @@ function take_step(
         next_dual_product,
       )
       done = true
+    else
+      step_size *= step_params.downscaling_factor
     end
-    step_size *= step_params.contraction_factor
   end
   if iter == max_iter && !done
     solver_state.numerical_error = true
