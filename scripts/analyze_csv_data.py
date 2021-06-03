@@ -1,4 +1,4 @@
-# Copyright 2020 Google LLC
+# Copyright 2021 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,12 @@
 # limitations under the License.
 
 #  This script generates all the experimental results used in the paper.
-#  It requires numpy, pandas, and matplotlib installed to run.
+#  It requires python 3, numpy, pandas, and matplotlib installed to run.
 #
 #   `python analyze_csv_data.py`
 #
+#  It reads csv files containing experimental results from ./csv, and outputs
+#  pdf figures to ./results/figs and latex tables to ./results/tex.
 
 
 import os
@@ -449,7 +451,7 @@ def gen_ratio_histograms(df, prefix, xaxis, xlabel, limit, par):
     with open(path, "w") as f:
         f.write(table)
 
-# Unsolved problems might be missing from csv, make sure all are accounted for
+# Unsolved problems might be missing from csv, make sure all are accounted for.
 
 
 def fill_in_missing_problems(df, instances_list):
@@ -534,11 +536,11 @@ if not os.path.exists(TEX_DIR):
     os.makedirs(TEX_DIR)
 
 # Get clean list of all problems we tested on:
-with open('../benchmarking/miplib2017_instance_list') as f:
+with open('../benchmarking/mip_relaxations_instance_list') as f:
     miplib_instances = f.readlines()
 miplib_instances = [p.strip() for p in miplib_instances if p[0] != '#']
 
-with open('../benchmarking/mittelmann_instance_list') as f:
+with open('../benchmarking/lp_benchmark_instance_list') as f:
     mittelmann_instances = f.readlines()
 mittelmann_instances = [p.strip() for p in mittelmann_instances if p[0] != '#']
 
