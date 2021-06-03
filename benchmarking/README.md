@@ -73,27 +73,6 @@ $ ./preprocess.sh "${HOME}/lp_benchmark" ./lp_benchmark_instance_list \
     "${HOME}/lp_benchmark_preprocessed" "${HOME}/PaPILO/build/bin/papilo"
 ```
 
-## L1 SVM
-
-The L1 SVM instances apply the formulation from equation (5) in "1-norm Support
-Vector Machines" by J. Zhu et al. (NIPS, 2003.
-https://papers.nips.cc/paper/2003/file/49d4b2faeb4b7b9e745775793141e2b2-Paper.pdf).
-
-1. From the local directory, instantiate the necessary packages by running
-   `julia --project=. -e 'import Pkg; Pkg.instantiate()'`.
-2. Download the benchmark instances. Run
-   `./collect_LIBSVM.sh`.
-3. Generate the instances by running `generate_l1_svm_lp.jl`.
-
-For example,
-
-```sh
-$ ./collect_LIBSVM.sh "${HOME}/LIBSVM"
-$ julia --project=. generate_l1_svm_lp.jl \
-    --input_filename="${HOME}/LIBSVM/duke" \
-    --output_filename="${HOME}/LIBSVM/duke.mps.gz" --regularizer_weight=1.0
-```
-
 ## Pagerank instances
 
 The Pagerank instances apply the LP formulation from "Subgradient methods for

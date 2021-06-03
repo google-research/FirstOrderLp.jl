@@ -6,8 +6,10 @@ This repository contains experimental code for solving linear and quadratic
 programming problems using first-order methods. It provides basic utilities and
 data structures for reading MPS files, rescaling, and implementing saddle-point
 methods. Specialized implementations are present for Mirror Prox and
-Primal-Dual Hybrid Gradient. It is focused on supporting experiments and
-publications and is not currently configured to be used as a library.
+Primal-Dual Hybrid Gradient.
+
+The code is a supplement for "Pratical Large-Scale Linear Programming using
+Primal-Dual Hybrid Gradient".
 
 ## One-time setup
 
@@ -159,7 +161,3 @@ submitting changes:
 ```shell
 $ julia --project=formatter -e 'using JuliaFormatter; format(".")'
 ```
-
-## Disclaimer
-
-This is not an official Google product.
