@@ -87,6 +87,7 @@ PRIMALWEIGHT_EXPS_TO_USE = [
 
 # placeholder:
 _BEST_STR = '_best_str_'
+_BEST_FIXED = '_best_fixed_'
 
 # Dataset names:
 MITTELMANN_STR = 'lp_benchmark'
@@ -157,6 +158,8 @@ def label_lookup(label):
             return r'Fixed PW ($\theta=0$)'
         if _BEST_STR in label:
             return 'Best per-instance PW'
+        if _BEST_FIXED in label:
+            return 'Best fixed PW'
     if 'improvements' in label:
         if 'vanilla' in label:
             return _PDHG
@@ -436,7 +439,7 @@ def gen_ratio_histograms(df, prefix, xaxis, xlabel, limit, par):
     plot_loghist(ratios['ratio'], min(len(ratios) // 3, 25))
     path = os.path.join(
         FIGS_DIR,
-        f'{prefix}_{l0}_{l1}_{xaxis}_performance_ratio.pdf')
+        f'{prefix}_{label_lookup(l0)}_{label_lookup(l1)}_{xaxis}_performance_ratio.pdf')
     plt.savefig(path)
     table = ratios.to_latex(float_format="%.2f",
                             longtable=False,
@@ -699,8 +702,24 @@ gen_total_solved_problems_table_split_tol(df, f'{MIPLIB_STR}_restarts', PAR)
 # bisco primalweight (NO JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_primalweight_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
-
 df_fixed = df[df['experiment_label'].str.contains('Fixed')]
+
+pw_solved = df_fixed[df_fixed['termination_reason'] == OPT] \
+    .groupby(['experiment_label', 'tolerance'])['experiment_label'] \
+    .agg('count') \
+    .pipe(pd.DataFrame) \
+    .rename(columns={'experiment_label': 'solved'}) \
+    .reset_index()
+dfs = []
+for t in df_fixed['tolerance'].unique():
+    _df = pw_solved[pw_solved['tolerance'] == t]
+    best_mp_run = _df.loc[_df['solved'].idxmax()]['experiment_label']
+    dfs.append(df_fixed[df_fixed['experiment_label'] == best_mp_run])
+df_best_ind = fill_in_missing_problems(pd.concat(dfs), miplib_instances)
+for t in df_best_fixed['tolerance'].unique():
+    # rename the experiment label
+    df_best_ind.loc[df_best_ind['tolerance'] == t, 'experiment_label'] = \
+        f'primalweight {_BEST_FIXED} {t}'
 
 # Pull out best performing fixed weight for each instance / tolerance:
 df_best_fixed = df_fixed[df_fixed['termination_reason'] == OPT].reset_index()
@@ -712,11 +731,11 @@ for t in df_best_fixed['tolerance'].unique():
     # rename the experiment label
     df_best_fixed.loc[df_best_fixed['tolerance'] == t, 'experiment_label'] = \
         f'primalweight {_BEST_STR} {t}'
-
 df_best_fixed = fill_in_missing_problems(df_best_fixed, miplib_instances)
+
 df = pd.concat(df[df['experiment_label'].str.contains(e)]
                for e in PRIMALWEIGHT_EXPS_TO_USE)
-df = pd.concat((df, df_best_fixed))
+df = pd.concat((df, df_best_fixed, df_best_ind))
 gen_solved_problems_plots_split_tol(
     df, f'{MIPLIB_STR}_primalweight', len(miplib_instances), False)
 gen_total_solved_problems_table_split_tol(
