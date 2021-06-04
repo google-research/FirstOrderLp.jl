@@ -82,7 +82,7 @@ SCALING_EXPS_TO_USE = [
 # Which primal-weight experiments to present
 PRIMALWEIGHT_EXPS_TO_USE = [
     'adaptive',
-    'Fixed 1e-0',
+    #'Fixed 1e-0',
 ]
 
 # placeholder:
@@ -449,8 +449,8 @@ def gen_ratio_histograms(df, prefix, xaxis, xlabel, limit, par):
                             column_format='lc',
                             na_rep='-')
     table = change_table_font_size(table)
-    path = os.path.join(TEX_DIR, f'{prefix}_{l0}:'
-                                 f'{l1}_{xaxis}_ratio_table.tex')
+    path = os.path.join(TEX_DIR, f'{prefix}_{label_lookup(l0)}:'
+                                 f'{label_lookup(l1)}_{xaxis}_ratio_table.tex')
     with open(path, "w") as f:
         f.write(table)
 
@@ -716,6 +716,7 @@ for t in df_fixed['tolerance'].unique():
     best_mp_run = _df.loc[_df['solved'].idxmax()]['experiment_label']
     dfs.append(df_fixed[df_fixed['experiment_label'] == best_mp_run])
 df_best_ind = fill_in_missing_problems(pd.concat(dfs), miplib_instances)
+
 for t in df_best_fixed['tolerance'].unique():
     # rename the experiment label
     df_best_ind.loc[df_best_ind['tolerance'] == t, 'experiment_label'] = \
