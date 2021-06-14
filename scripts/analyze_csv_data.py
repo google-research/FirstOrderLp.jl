@@ -585,7 +585,7 @@ gen_ratio_histograms_split_tol(df, f'{MITTELMANN_STR}', PAR)
 
 ######################################################################
 
-# bisco pdhg vs malitsky-pock results (JOIN DEFAULT)
+# Scaling results (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_malitskypock_100k.csv'))
 mp_solved = df[df['termination_reason'] == OPT] \
     .groupby(['experiment_label', 'tolerance'])['experiment_label'] \
@@ -600,7 +600,7 @@ for t in df['tolerance'].unique():
     dfs.append(df[df['experiment_label'] == best_mp_run])
 df_best_ind = fill_in_missing_problems(pd.concat(dfs), miplib_instances)
 
-# Pull out best performing fixed weight for each instance / tolerance:
+# Pull out best performing scaling for each instance / tolerance:
 df_best_fixed = df[df['termination_reason'] == OPT].reset_index()
 best_idxs = df_best_fixed.groupby(['instance_name', 'tolerance'])[
     'cumulative_kkt_matrix_passes'].idxmin()
