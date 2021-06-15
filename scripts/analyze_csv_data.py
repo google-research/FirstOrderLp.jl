@@ -700,10 +700,15 @@ df_best_per = fill_in_missing_problems(df_best_per, miplib_instances)
 # filter out un-needed scaling experiments:
 df = pd.concat(df[df['experiment_label'].str.contains(e)]
                for e in SCALING_EXPS_TO_USE)
-df = pd.concat((df, df_best_per))
 gen_solved_problems_plots_split_tol(
     df, f'{MIPLIB_STR}_scaling', len(miplib_instances))
 gen_total_solved_problems_table_split_tol(df, f'{MIPLIB_STR}_scaling', PAR)
+
+df = pd.concat((df, df_best_per))
+gen_solved_problems_plots_split_tol(
+    df, f'{MIPLIB_STR}_scaling_with_best_per', len(miplib_instances))
+gen_total_solved_problems_table_split_tol(
+    df, f'{MIPLIB_STR}_scaling_with_best_per', PAR)
 
 ######################################################################
 
