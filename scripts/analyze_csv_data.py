@@ -151,6 +151,9 @@ def label_lookup(label):
             return 'PDLP'
         if 'fixed' in label:
             return 'Fixed step-size'
+    if 'scaling' in label:
+        if _BEST_STR in label:
+            return 'Best per-instance scaling'
     if 'primalweight' in label:
         if 'adaptive' in label:
             return 'PDLP'
@@ -582,7 +585,7 @@ gen_ratio_histograms_split_tol(df, f'{MITTELMANN_STR}', PAR)
 
 ######################################################################
 
-# bisco pdhg vs malitsky-pock results (JOIN DEFAULT)
+# Scaling results (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_malitskypock_100k.csv'))
 mp_solved = df[df['termination_reason'] == OPT] \
     .groupby(['experiment_label', 'tolerance'])['experiment_label'] \
@@ -597,7 +600,7 @@ for t in df['tolerance'].unique():
     dfs.append(df[df['experiment_label'] == best_mp_run])
 df_best_ind = fill_in_missing_problems(pd.concat(dfs), miplib_instances)
 
-# Pull out best performing fixed weight for each instance / tolerance:
+# Pull out best performing scaling for each instance / tolerance:
 df_best_fixed = df[df['termination_reason'] == OPT].reset_index()
 best_idxs = df_best_fixed.groupby(['instance_name', 'tolerance'])[
     'cumulative_kkt_matrix_passes'].idxmin()
@@ -681,12 +684,31 @@ gen_total_solved_problems_table_split_tol(df, f'{MIPLIB_STR}_presolve', PAR)
 # bisco scaling vs no scaling (NO JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_scaling_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
+
+# Pull out best performing scaling for each instance / tolerance:
+df_best_per = df[df['termination_reason'] == OPT].reset_index()
+best_idxs = df_best_per.groupby(['instance_name', 'tolerance'])[
+    'cumulative_kkt_matrix_passes'].idxmin()
+df_best_per = df_best_per.loc[best_idxs]
+
+for t in df_best_per['tolerance'].unique():
+    # rename the experiment label
+    df_best_per.loc[df_best_per['tolerance'] == t, 'experiment_label'] = \
+        f'scaling {_BEST_STR} {t}'
+
+df_best_per = fill_in_missing_problems(df_best_per, miplib_instances)
 # filter out un-needed scaling experiments:
 df = pd.concat(df[df['experiment_label'].str.contains(e)]
                for e in SCALING_EXPS_TO_USE)
 gen_solved_problems_plots_split_tol(
     df, f'{MIPLIB_STR}_scaling', len(miplib_instances))
 gen_total_solved_problems_table_split_tol(df, f'{MIPLIB_STR}_scaling', PAR)
+
+df = pd.concat((df, df_best_per))
+gen_solved_problems_plots_split_tol(
+    df, f'{MIPLIB_STR}_scaling_with_best_per', len(miplib_instances))
+gen_total_solved_problems_table_split_tol(
+    df, f'{MIPLIB_STR}_scaling_with_best_per', PAR)
 
 ######################################################################
 
