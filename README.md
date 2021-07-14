@@ -9,6 +9,19 @@ methods. Specialized implementations are present for Mirror Prox and
 Primal-Dual Hybrid Gradient. It is focused on supporting experiments and
 publications and is not currently configured to be used as a library.
 
+## Related papers
+
+More implementation details for linear programming: 
+https://arxiv.org/pdf/2106.04756.pdf;
+
+Theoretical results on restarted primal-dual algorithms for linear programming:
+https://arxiv.org/pdf/2105.12715.pdf;
+
+Theoretical results on infeasibility detection of first-order methods for 
+linear programming:
+https://arxiv.org/pdf/2102.04592.pdf.
+
+
 ## One-time setup
 
 Install Julia 1.6.0 or later. From the root directory of the repository, run:
