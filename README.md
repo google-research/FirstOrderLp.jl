@@ -13,7 +13,7 @@ publications and is not currently configured to be used as a library.
 
 The following papers describe the methods implemented in this repository and use FirstOrderLp for computational experiments:
 
-- [Practical Large-Scale Linear Programming using Primal-Dual Hybrid Gradient](https://arxiv.org/avs/2106.04756)
+- [Practical Large-Scale Linear Programming using Primal-Dual Hybrid Gradient](https://arxiv.org/abs/2106.04756)
 - [Faster First-Order Primal-Dual Methods for Linear Programming using Restarts and Sharpness](https://arxiv.org/abs/2105.12715)
 - [Infeasibility detection with primal-dual hybrid gradient for large-scale linear programming](https://arxiv.org/abs/2102.04592)
 
