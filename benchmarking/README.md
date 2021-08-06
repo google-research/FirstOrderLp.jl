@@ -14,7 +14,7 @@ in `mip_relaxations_instance_list`.
    `./collect_mip_relaxations.sh` or follow its steps for downloading the
    instances from the MIPLIB 2017 collection and extracting the benchmark
    dataset.
-3. Download and build PaPILO from https://github.com/lgottwald/PaPILO.
+3. Download and build PaPILO from https://github.com/scipopt/papilo/.
 4. From the local directory, run `./preprocess.sh`.
 
 `collect_mip_relaxations.sh` has the following argument structure:
