@@ -110,13 +110,17 @@ function solve_instance_and_output(
   output_dir::String,
   instance_path::String,
   print_stdout::Bool,
+  fixed_format_input::Bool,
 )
   if !isdir(output_dir)
     mkpath(output_dir)
   end
 
   if endswith(instance_path, ".mps") || endswith(instance_path, ".mps.gz")
-    lp = FirstOrderLp.qps_reader_to_standard_form(instance_path)
+    lp = FirstOrderLp.qps_reader_to_standard_form(
+      instance_path,
+      fixed_format = fixed_format_input,
+    )
   else
     error("Instance has unrecognized file extension: ", basename(instance_path))
   end
@@ -274,6 +278,13 @@ function parse_command_line()
     arg_type = Bool
     default = true
 
+    "--fixed_format_input"
+    help =
+      "If true, parse the input MPS/QPS file in fixed format instead of " *
+      "free (the default)."
+    arg_type = Bool
+    default = false
+
     "--tolerance"
     help =
       "For SCS, the value to set for 'eps', a convergence tolerance." *
@@ -403,6 +414,7 @@ function main()
     parsed_args["output_dir"],
     parsed_args["instance_path"],
     parsed_args["print_stdout"],
+    parsed_args["fixed_format_input"],
   )
 end
 
