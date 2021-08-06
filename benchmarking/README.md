@@ -73,6 +73,42 @@ $ ./preprocess.sh "${HOME}/lp_benchmark" ./lp_benchmark_instance_list \
     "${HOME}/lp_benchmark_preprocessed" "${HOME}/PaPILO/build/bin/papilo"
 ```
 
+## Preprocessed Netlib benchmark dataset
+
+*IMPORTANT:* The Netlib instances use the fixed format version of MPS. Some
+instances cannot be read with free format MPS readers. As a result, you must
+specify the `--fixed_format_input` flag to `scripts/solve_qp.jl` and
+`scripts/solve_lp_external.jl`, and the `--convert_fixed_to_free` flag to
+preprocess.jl.
+
+This dataset contains the [Netlib LP benchmark](http://www.netlib.org/lp/data),
+including the Kennington instances.
+
+1. From the local directory, instantiate the necessary packages by running
+   `julia --project=. -e 'import Pkg; Pkg.instantiate()'`.
+2. Download the benchmark instances. Either run
+   `./collect_netlib_benchmark.sh` or follow its steps for downloading the
+   instances from the multiple sources and organizing them.
+3. Download and build PaPILO from https://github.com/lgottwald/PaPILO.
+4. From the local directory, run `./preprocess.sh`, specifying the
+   `--convert_fixed_to_free` flag.
+
+`collect_netlib_benchmark.sh` has the following argument structure:
+
+```sh
+$ ./collect_netlib_benchmark.sh temporary_directory output_directory
+```
+
+For example, assuming you have already instantiated the packages and built
+PaPILO,
+
+```sh
+$ ./collect_netlib_benchmark.sh /tmp "${HOME}/netlib_benchmark"
+$ ./preprocess.sh --convert_fixed_to_free "${HOME}/netlib_benchmark" \
+    ./netlib_benchmark_instance_list "${HOME}/netlib_benchmark_preprocessed" \
+    "${HOME}/PaPILO/build/bin/papilo"
+```
+
 ## L1 SVM
 
 The L1 SVM instances apply the formulation from equation (5) in "1-norm Support
