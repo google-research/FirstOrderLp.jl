@@ -22,12 +22,16 @@
 
 
 import os
+import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from cycler import cycler
 plt.rcParams.update({'figure.max_open_warning': 0, 'font.size': 16})
+
+# The 'TkAgg' matplotlib backend fails at the default recursion limit.
+sys.setrecursionlimit(10000)
 
 # This is required to generate plots that are easy to read when printed:
 plt.rcParams['axes.prop_cycle'] = cycler(
