@@ -16,8 +16,8 @@
 # This script illustrates how to collect the instances in the "Netlib Benchmark"
 # set. Although it can be used directly to collect the benchmark, it is intended
 # primarily as a guide to collecting the benchmark - it makes several
-# assumptions about the environment. In particular, it assumes wget, gzip, f77,
-# sed, and cc exist and work as expected.
+# assumptions about the environment. In particular, it assumes wget, gzip,
+# gfortran, sed, and cc exist and work as expected.
 #
 # This collects the linear programming instances from netlib:
 # https://www.netlib.org/lp/data
@@ -63,7 +63,7 @@ done
 # qap is given via a fortran generator and data files.
 wget --directory-prefix="${TEMP_DIR}" -nv \
   "http://www.netlib.org/lp/generators/qap/newlp.f"
-f77 -O3 -o "${TEMP_DIR}/newlp" "${TEMP_DIR}/newlp.f"
+gfortran -O3 -o "${TEMP_DIR}/newlp" "${TEMP_DIR}/newlp.f"
 for n in 8 12 15; do
   wget -nv -O - "http://www.netlib.org/lp/generators/qap/data.${n}" | \
     "${TEMP_DIR}/newlp" | gzip > "${DEST_DIR}/qap${n}.mps.gz"
@@ -78,11 +78,7 @@ wget --directory-prefix="${TEMP_DIR}" -nv \
   bash stocfor3
   # Fix a couple of instances of bit-rot (compilers getting pickier).
   sed -i.orig -e 's/ INTEGER\*2 / INTEGER*4 /' common6.for
-  sed -i.orig -e '1329c\
-      CHARACTER*8 DNAME(3), NAME1(1000), NAME2(1000), NAME3(1000)\
-      CHARACTER*8 PAR1(1000), PAR2(1000), ARMTX(5000)\
-      INTEGER     IRMTX(5000), LRMTX(1000), MDIST(1000)' input.f
-  f77 -O3 -o std2mps std2mps.f input.f
+  gfortran -O3 --std=legacy -o std2mps std2mps.f input.f
   ln -s time7.frs fort.1
   ./emps < core.mpc > fort.2
   ln -s stoch3.frs fort.3
@@ -97,7 +93,7 @@ wget -nv --directory-prefix="${TEMP_DIR}" "http://www.netlib.org/lp/data/truss"
 (
   cd "${TEMP_DIR}"
   bash truss
-  f77 -O3 -o truss.exe truss.f
+  gfortran -O3 -o truss.exe truss.f
   ./truss.exe
   gzip < mps > truss.mps.gz
 )
