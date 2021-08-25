@@ -16,9 +16,14 @@
 # Generates a presolved version of a filtered selection of a benchmark
 # collection.
 
+convert_fixed_to_free=0
+if [[ "$#" -ge 1 && "$1" == "--convert_fixed_to_free" ]]; then
+    convert_fixed_to_free=1
+    shift
+fi
 if [[ "$#" -ne 4 ]]; then
-    echo "Usage: preprocess.sh path_to_benchmark benchmark_instance_list" \
-        "output_directory path_to_papilo_binary"
+    echo "Usage: preprocess.sh [--convert_fixed_to_free] path_to_benchmark" \
+        "benchmark_instance_list output_directory path_to_papilo_binary" 1>&1
     exit 1
 fi
 
@@ -29,18 +34,21 @@ benchmark_instance_list="$2"
 output_directory="$3"
 papilo_binary="$4"
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [[ ! -d "${benchmark_path}" ]]; then
-    echo "benchmark path does not exist: ${benchmark_path}"
+    echo "benchmark path does not exist: ${benchmark_path}" 1>&2
     exit 1
 fi
 
 if [[ ! -f "${benchmark_instance_list}" ]]; then
-    echo "Unable to read benchmark instance list: ${benchmark_instance_list}"
+    echo "Unable to read benchmark instance list:" \
+        "${benchmark_instance_list}" 1>&2
     exit 1
 fi
 
 if [[ ! -x "${papilo_binary}" ]]; then
-    echo "PaPILO binary not found: ${papilo_binary}"
+    echo "PaPILO binary not found: ${papilo_binary}" 1>&2
     exit 1
 fi
 
@@ -55,9 +63,15 @@ while read instance_name; do
         continue
     fi
     echo "Processing ${instance_name}"
-    
-    gunzip -c "${benchmark_path}/${instance_name}.mps.gz" \
-        >"${gunzip_scratch_dir}/${instance_name}.mps"
+
+    if [[ convert_fixed_to_free == 1 ]]; then
+        gunzip -c "${benchmark_path}/${instance_name}.mps.gz" \
+            | awk -f "${script_dir}/mps_fixed_to_free.awk" \
+            > "${gunzip_scratch_dir}/${instance_name}.mps"
+    else
+        gunzip -c "${benchmark_path}/${instance_name}.mps.gz" \
+            > "${gunzip_scratch_dir}/${instance_name}.mps"
+    fi
     "${JULIA}" --project=. drop_integrality.jl \
         "${gunzip_scratch_dir}/${instance_name}.mps" \
         "${relaxation_scratch_dir}/${instance_name}.mps"
