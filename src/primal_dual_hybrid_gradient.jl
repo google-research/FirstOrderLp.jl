@@ -165,7 +165,8 @@ struct PdhgParameters
   verbosity::Int64
 
   """
-  Whether to record an IterationStats object.
+  Whether to record an IterationStats object. If false, only iteration stats
+  for the final (terminating) iteration are recorded.
   """
   record_iteration_stats::Bool
 
@@ -942,10 +943,6 @@ function optimize(
         primal_norm_params,
         dual_norm_params,
       )
-      if params.record_iteration_stats
-        push!(iteration_stats, current_iteration_stats)
-      end
-
       # Check the termination criteria.
       termination_reason = check_termination_criteria(
         termination_criteria,
@@ -954,6 +951,12 @@ function optimize(
       )
       if solver_state.numerical_error && termination_reason == false
         termination_reason = TERMINATION_REASON_NUMERICAL_ERROR
+      end
+
+      # If we're terminating, record the iteration stats to provide final
+      # solution stats.
+      if params.record_iteration_stats || termination_reason != false
+        push!(iteration_stats, current_iteration_stats)
       end
 
       # Print table.
