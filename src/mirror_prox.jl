@@ -103,7 +103,8 @@ struct MirrorProxParameters
   verbosity::Int64
 
   """
-  Whether to record an IterationStats object.
+  Whether to record an IterationStats object. If false, only iteration stats
+  for the final (terminating) iteration are recorded.
   """
   record_iteration_stats::Bool
 

@@ -351,7 +351,9 @@ function parse_command_line()
     help =
       "Whether we record iterations stats. If true then record an " *
       "IterationStats object with frequency (in iterations) " *
-      "equal to termination_evaluation_frequency."
+      "equal to termination_evaluation_frequency. If false then " *
+      "only record the iteration stats for the final (terminating) " *
+      "iteration."
     arg_type = Bool
     default = true
 
