@@ -772,9 +772,6 @@ function optimize(
         primal_part(p.mirror_map_scaling),
         dual_part(p.mirror_map_scaling),
       )
-      if params.record_iteration_stats
-        push!(iteration_stats, current_iteration_stats)
-      end
 
       # Check the termination criteria.
       termination_reason = check_termination_criteria(
@@ -784,6 +781,12 @@ function optimize(
       )
       if numerical_error && termination_reason == false
         termination_reason = TERMINATION_REASON_NUMERICAL_ERROR
+      end
+
+      # If we're terminating, record the iteration stats to provide final
+      # solution stats.
+      if params.record_iteration_stats || termination_reason != false
+        push!(iteration_stats, current_iteration_stats)
       end
 
       mirror_prox_display(
