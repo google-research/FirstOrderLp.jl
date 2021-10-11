@@ -25,6 +25,7 @@ import HiGHS
 import JSON3
 import JuMP
 import MathOptInterface
+import ProxSDP
 import SCS
 
 import FirstOrderLp
@@ -403,6 +404,23 @@ function main()
     push!(parameters, ("dual_feasibility_tolerance", parsed_args["tolerance"]))
     optimizer_with_attributes = MathOptInterface.OptimizerWithAttributes(
       HiGHS.Optimizer,
+      [MOI.RawParameter(p) => v for (p, v) in parameters],
+    )
+  elseif parsed_args["solver"] == "proxsdp"
+    parameters = []
+    if parsed_args["verbose"]
+      push!(parameters, ("log_verbose", true))
+    end
+    push!(parameters, ("check_dual_feas", true))
+    push!(parameters, ("tol_gap", parsed_args["tolerance"]))
+    push!(parameters, ("tol_feasibility", parsed_args["tolerance"]))
+    push!(parameters, ("tol_feasibility_dual", parsed_args["tolerance"]))
+    push!(parameters, ("max_iter", iteration_limit))
+    # tol_primal, tol_dual?
+    # TODO: check_dual_feas_freq
+    # how to extract iteration counts
+    # how is dual feasibility checked?
+    optimizer_with_attributes = MOI.OptimizerWithAttributes(ProxSDP.Optimizer,
       [MOI.RawParameter(p) => v for (p, v) in parameters],
     )
   else
