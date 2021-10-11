@@ -96,6 +96,7 @@ _BEST_FIXED = '_best_fixed_'
 # Dataset names:
 MITTELMANN_STR = 'lp_benchmark'
 MIPLIB_STR = 'mip_relaxations'
+NETLIB_STR = 'netlib'
 
 # Change table font size to fit paper:
 LATEX_FONT_SIZE = '\\small'
@@ -554,6 +555,10 @@ with open('../benchmarking/lp_benchmark_instance_list') as f:
     mittelmann_instances = f.readlines()
 mittelmann_instances = [p.strip() for p in mittelmann_instances if p[0] != '#']
 
+with open('../benchmarking/netlib_benchmark_instance_list') as f:
+    netlib_instances = f.readlines()
+netlib_instances = [p.strip() for p in netlib_instances if p[0] != '#']
+
 # Pull out 'default' (ie best) pdhg implementation to compare against:
 df_default = pd.read_csv(
     os.path.join(
@@ -586,6 +591,23 @@ gen_solved_problems_plots_split_tol(
     df, f'{MITTELMANN_STR}', len(mittelmann_instances))
 gen_total_solved_problems_table_split_tol(df, f'{MITTELMANN_STR}', PAR)
 gen_ratio_histograms_split_tol(df, f'{MITTELMANN_STR}', PAR)
+
+######################################################################
+
+df = pd.read_csv(os.path.join(CSV_DIR, 'netlib_pdhg_enhanced_100k.csv'))
+df = fill_in_missing_problems(df, netlib_instances)
+df_vanilla = pd.read_csv(
+    os.path.join(
+        CSV_DIR,
+        'netlib_improvements_100k.csv'))
+df_vanilla = df_vanilla[df_vanilla['enhancements'] == 'vanilla']
+df_vanilla = fill_in_missing_problems(df_vanilla, netlib_instances)
+df = pd.concat((df, df_vanilla))
+gen_solved_problems_plots_split_tol(
+    df, f'{NETLIB_STR}', len(netlib_instances))
+gen_total_solved_problems_table_split_tol(df, f'{NETLIB_STR}', PAR)
+gen_ratio_histograms_split_tol(df, f'{NETLIB_STR}', PAR)
+
 
 ######################################################################
 
@@ -654,7 +676,7 @@ df_pdhg_mp = pd.read_csv(os.path.join(CSV_DIR, 'mittelmann_pdhg_mp_1h.csv'))
 df_pdhg_mp = fill_in_missing_problems(df_pdhg_mp, mittelmann_instances)
 df_pdhg_vanilla = pd.read_csv(os.path.join(
     CSV_DIR, 'mittelmann_pdhg_vanilla_1h.csv'))
-df_pdhg_vanilla = fill_in_missing_problems(df_pdhg_vanilla, miplib_instances)
+df_pdhg_vanilla = fill_in_missing_problems(df_pdhg_vanilla, mittelmann_instances)
 df_scs = pd.read_csv(os.path.join(CSV_DIR, 'mittelmann_scs_1h.csv'))
 df_scs = fill_in_missing_problems(df_scs, mittelmann_instances)
 df = pd.concat((df_pdhg_mp, df_pdhg_vanilla, df_scs))
@@ -673,6 +695,31 @@ gen_ratio_histograms_split_tol(df_pdhg_mp, f'{MITTELMANN_STR}', PAR)
 gen_ratio_histograms_split_tol(df_pdhg_scs_indir, f'{MITTELMANN_STR}', PAR)
 gen_ratio_histograms_split_tol(df_pdhg_scs_dir, f'{MITTELMANN_STR}', PAR)
 
+######################################################################
+
+# bisco vs mp vs scs on NETLIB (JOIN PDHG/MP WITH SCS)
+df_pdhg_mp = pd.read_csv(os.path.join(CSV_DIR, 'netlib_pdhg_mp_1h.csv'))
+df_pdhg_mp = fill_in_missing_problems(df_pdhg_mp, netlib_instances)
+df_pdhg_vanilla = pd.read_csv(os.path.join(
+    CSV_DIR, 'netlib_pdhg_vanilla_1h.csv'))
+df_pdhg_vanilla = fill_in_missing_problems(df_pdhg_vanilla, netlib_instances)
+df_scs = pd.read_csv(os.path.join(CSV_DIR, 'netlib_scs_1h.csv'))
+df_scs = fill_in_missing_problems(df_scs, netlib_instances)
+df = pd.concat((df_pdhg_mp, df_pdhg_vanilla, df_scs))
+gen_solved_problems_plots_split_tol(
+    df,
+    f'{NETLIB_STR}_baselines',
+    len(netlib_instances))
+gen_total_solved_problems_table_split_tol(
+    df, f'{NETLIB_STR}_baselines', PAR)
+
+df_pdhg_scs_dir = pd.concat(
+    (df_pdhg_mp[df_pdhg_mp['method'] == 'pdhg'], df_scs[df_scs['method'] == 'scs-direct']))
+df_pdhg_scs_indir = pd.concat(
+    (df_pdhg_mp[df_pdhg_mp['method'] == 'pdhg'], df_scs[df_scs['method'] == 'scs-indirect']))
+gen_ratio_histograms_split_tol(df_pdhg_mp, f'{NETLIB_STR}', PAR)
+gen_ratio_histograms_split_tol(df_pdhg_scs_indir, f'{NETLIB_STR}', PAR)
+gen_ratio_histograms_split_tol(df_pdhg_scs_dir, f'{NETLIB_STR}', PAR)
 
 ######################################################################
 
@@ -817,3 +864,35 @@ for df in outputs.values():
     df.drop('rank', 1, inplace=True)
 
 gen_all_improvement_plots(outputs, f'{MITTELMANN_STR}_improvements')
+
+######################################################################
+
+# NETLIB bisco ablate improvements (JOIN DEFAULT)
+df_default_netlib = pd.read_csv(
+    os.path.join(
+        CSV_DIR,
+        'netlib_pdhg_enhanced_100k.csv'))
+df_default_netlib = fill_in_missing_problems(
+    df_default_netlib, netlib_instances)
+
+df = pd.read_csv(os.path.join(CSV_DIR, 'netlib_improvements_100k.csv'))
+df_pdlp = df_default_netlib.copy()
+for t in df_pdlp['tolerance'].unique():
+    df_pdlp.loc[df_pdlp['tolerance'] == t,
+                'experiment_label'] = f'pdlp_final_improvements_{t}'
+df = pd.concat((df, df_pdlp.reset_index()))
+df = fill_in_missing_problems(df, netlib_instances)
+gen_solved_problems_plots_split_tol(
+    df,
+    f'{NETLIB_STR}_improvements',
+    len(netlib_instances),
+    True)
+outputs = gen_total_solved_problems_table_split_tol(
+    df, f'{NETLIB_STR}_improvements', PAR)
+
+for df in outputs.values():
+    df['rank'] = df['Experiment'].map(IMPROVEMENTS_ORDER_IDX)
+    df.sort_values('rank', inplace=True)
+    df.drop('rank', 1, inplace=True)
+
+gen_all_improvement_plots(outputs, f'{NETLIB_STR}_improvements')
