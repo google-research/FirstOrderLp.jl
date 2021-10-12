@@ -568,7 +568,7 @@ df_default = fill_in_missing_problems(df_default, miplib_instances)
 
 ######################################################################
 
-# bisco pdhg vs vanilla pdhg (JOIN DEFAULT)
+# PDLP pdhg vs vanilla pdhg (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_pdhg_vanilla_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
 df = pd.concat((df_default, df))
@@ -648,7 +648,7 @@ gen_total_solved_problems_table_split_tol(df, f'{MIPLIB_STR}_stepsize', PAR)
 
 ######################################################################
 
-# bisco vs mp vs scs on MIPLIB (JOIN PDHG/MP WITH SCS)
+# PDLP vs mp vs scs on MIPLIB (JOIN PDHG/MP WITH SCS)
 df_pdhg_mp = pd.read_csv(os.path.join(CSV_DIR, 'miplib_pdhg_mp_1h.csv'))
 df_pdhg_mp = fill_in_missing_problems(df_pdhg_mp, miplib_instances)
 df_scs = pd.read_csv(os.path.join(CSV_DIR, 'miplib_scs_1h.csv'))
@@ -671,7 +671,7 @@ gen_ratio_histograms_split_tol(df_pdhg_scs_dir, f'{MIPLIB_STR}', PAR)
 
 ######################################################################
 
-# bisco vs mp vs scs on MITTELMANN (JOIN PDHG/MP WITH SCS)
+# PDLP vs mp vs scs on MITTELMANN (JOIN PDHG/MP WITH SCS)
 df_pdhg_mp = pd.read_csv(os.path.join(CSV_DIR, 'mittelmann_pdhg_mp_1h.csv'))
 df_pdhg_mp = fill_in_missing_problems(df_pdhg_mp, mittelmann_instances)
 df_pdhg_vanilla = pd.read_csv(os.path.join(
@@ -697,7 +697,7 @@ gen_ratio_histograms_split_tol(df_pdhg_scs_dir, f'{MITTELMANN_STR}', PAR)
 
 ######################################################################
 
-# bisco vs mp vs scs on NETLIB (JOIN PDHG/MP WITH SCS)
+# PDLP vs mp vs scs on NETLIB (JOIN PDHG/MP WITH SCS)
 df_pdhg_mp = pd.read_csv(os.path.join(CSV_DIR, 'netlib_pdhg_mp_1h.csv'))
 df_pdhg_mp = fill_in_missing_problems(df_pdhg_mp, netlib_instances)
 df_pdhg_vanilla = pd.read_csv(os.path.join(
@@ -723,7 +723,7 @@ gen_ratio_histograms_split_tol(df_pdhg_scs_dir, f'{NETLIB_STR}', PAR)
 
 ######################################################################
 
-# bisco presolve vs no presolve (JOIN DEFAULT)
+# PDLP presolve vs no presolve (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_nopresolve_100k.csv'))
 df = pd.concat((df_default, df))
 gen_solved_problems_plots_split_tol(
@@ -732,7 +732,7 @@ gen_total_solved_problems_table_split_tol(df, f'{MIPLIB_STR}_presolve', PAR)
 
 ######################################################################
 
-# bisco scaling vs no scaling (NO JOIN DEFAULT)
+# PDLP scaling vs no scaling (NO JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_scaling_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
 
@@ -763,7 +763,7 @@ gen_total_solved_problems_table_split_tol(
 
 ######################################################################
 
-# bisco restart vs no restart (NO JOIN DEFAULT)
+# PDLP restart vs no restart (NO JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_restarts_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
 gen_solved_problems_plots_split_tol(
@@ -772,7 +772,7 @@ gen_total_solved_problems_table_split_tol(df, f'{MIPLIB_STR}_restarts', PAR)
 
 ######################################################################
 
-# bisco primalweight (NO JOIN DEFAULT)
+# PDLP primalweight (NO JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_primalweight_100k.csv'))
 df = fill_in_missing_problems(df, miplib_instances)
 df_fixed = df[df['experiment_label'].str.contains('Fixed')]
@@ -818,7 +818,7 @@ gen_total_solved_problems_table_split_tol(
 
 ######################################################################
 
-# MIPLIB bisco ablate improvements (JOIN DEFAULT)
+# MIPLIB PDLP ablate improvements (JOIN DEFAULT)
 df = pd.read_csv(os.path.join(CSV_DIR, 'miplib_improvements_100k.csv'))
 df_pdlp = df_default.copy()
 for t in df_pdlp['tolerance'].unique():
@@ -835,7 +835,7 @@ gen_all_improvement_plots(outputs, f'{MIPLIB_STR}_improvements')
 
 ######################################################################
 
-# MITTELMAN bisco ablate improvements (JOIN DEFAULT)
+# MITTELMAN PDLP ablate improvements (JOIN DEFAULT)
 df_default_mittelmann = pd.read_csv(
     os.path.join(
         CSV_DIR,
@@ -867,7 +867,7 @@ gen_all_improvement_plots(outputs, f'{MITTELMANN_STR}_improvements')
 
 ######################################################################
 
-# NETLIB bisco ablate improvements (JOIN DEFAULT)
+# NETLIB PDLP ablate improvements (JOIN DEFAULT)
 df_default_netlib = pd.read_csv(
     os.path.join(
         CSV_DIR,
