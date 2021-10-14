@@ -21,6 +21,7 @@
 #  pdf figures to ./results/figs and latex tables to ./results/tex.
 
 
+import itertools
 import os
 import sys
 import numpy as np
@@ -489,12 +490,15 @@ def improvements_plot(dfs, prefix, key, ascending):
 
     df = pd.concat(normalized_dfs)
     fig = plt.figure(figsize=(10, 6))
+
+    markers = itertools.cycle(['o', 'v', '^', '<', '>', 's'])
     for tol in df['tolerance'].unique():
         _df = df[df['tolerance'] == tol].reset_index(drop=True)
         plt.plot(
             _df[key].to_numpy(),
             linestyle='--',
-            marker='o',
+            marker=next(markers),
+            markersize=12,
             label=f'tolerance {tol:.0E}')
         plt.yscale('log')
         plt.ylabel('Normalized ' + key)
