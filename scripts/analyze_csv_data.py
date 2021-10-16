@@ -513,7 +513,7 @@ def improvements_plot(dfs, prefix, key, ascending):
         # ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2f")
 
     if len(dfs) > 1:
-        plt.legend(loc='best')
+        plt.legend(loc='best', prop={'size': 20})
     name = key.replace(' ', '_')
     path = os.path.join(FIGS_DIR, f'{prefix}_{name}.pdf')
     plt.savefig(
