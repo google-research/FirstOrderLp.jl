@@ -104,11 +104,11 @@ LATEX_FONT_SIZE = '\\small'
 
 # Naming for improvements plots:
 _PDHG = 'PDHG'
-_RESTARTS = '+ restarts'
-_SCALING = '+ scaling'
-_PRIMAL_WEIGHT = '+ primal\nweight'
-_STEPSIZE = '+ step\nsize'
-_PRESOLVE = '+ presolve\n(= PDLP)'
+_RESTARTS = '+restarts'
+_SCALING = '+scaling'
+_PRIMAL_WEIGHT = '+primal\nweight'
+_STEPSIZE = '+step\nsize'
+_PRESOLVE = '+presolve\n(= PDLP)'
 
 # Order in which improvements should appear:
 IMPROVEMENTS_ORDER = [
@@ -501,9 +501,12 @@ def improvements_plot(dfs, prefix, key, ascending):
             markersize=12,
             label=f'tolerance {tol:.0E}')
         plt.yscale('log')
-        plt.ylabel('Normalized ' + key)
-        plt.title(sanitize_title(prefix))
-        plt.xticks(range(len(_df['Experiment'])), _df['Experiment'].to_list())
+        plt.ylabel('Normalized ' + key, fontsize=20)
+        plt.title(sanitize_title(prefix), fontsize=20)
+        plt.yticks(fontsize=20)
+        plt.xticks(range(len(_df['Experiment'])),
+                   _df['Experiment'].to_list(),
+                   fontsize=20)
         ax = plt.gca()
         ax.yaxis.set_major_locator(ticker.LogLocator(subs=[1, 2, 3, 5, 7]))
         ax.yaxis.set_major_formatter(
