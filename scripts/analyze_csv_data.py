@@ -512,7 +512,6 @@ def improvements_plot(dfs, prefix, key, ascending):
             ticker.LogFormatterSciNotation(
                 labelOnlyBase=False,
                 minor_thresholds=(4, 2)))
-        plt.yticks(fontsize=20)
         # ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2f")
 
     if len(dfs) > 1:
