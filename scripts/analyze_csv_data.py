@@ -503,10 +503,9 @@ def improvements_plot(dfs, prefix, key, ascending):
         plt.yscale('log')
         plt.ylabel('Normalized ' + key, fontsize=20)
         plt.title(sanitize_title(prefix), fontsize=20)
-        plt.yticks(fontsize=20)
         plt.xticks(range(len(_df['Experiment'])),
-                   _df['Experiment'].to_list(),
-                   fontsize=20)
+                   _df['Experiment'].to_list())
+        plt.tick_params(axis='both', which='both', labelsize=20)
         ax = plt.gca()
         ax.yaxis.set_major_locator(ticker.LogLocator(subs=[1, 2, 3, 5, 7]))
         ax.yaxis.set_major_formatter(
