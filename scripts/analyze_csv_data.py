@@ -491,12 +491,14 @@ def gen_ratio_histograms(df, prefix, xaxis, xlabel, limit, par):
             f"{prefix} {xlabel} {label_lookup(l0)}:{label_lookup(l1)}"
         )
     )
-    plot_loghist(ratios["ratio"], min(len(ratios) // 3, 25))
-    path = os.path.join(
-        FIGS_DIR,
-        f"{prefix}_{label_lookup(l0)}_{label_lookup(l1)}_{xaxis}_performance_ratio.pdf",
-    )
-    plt.savefig(path)
+    nbins = min(len(ratios) // 3, 25)
+    if nbins > 0:
+        plot_loghist(ratios["ratio"], nbins)
+        path = os.path.join(
+            FIGS_DIR,
+            f"{prefix}_{label_lookup(l0)}_{label_lookup(l1)}_{xaxis}_performance_ratio.pdf",
+        )
+        plt.savefig(path)
     table = ratios.to_latex(
         float_format="%.2f",
         longtable=False,
