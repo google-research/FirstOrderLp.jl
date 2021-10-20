@@ -369,7 +369,7 @@ def gen_total_solved_problems_table(df, prefix, par):
     if 'improvements' in prefix:
         output['rank'] = output['Experiment'].map(IMPROVEMENTS_ORDER_IDX)
         output.sort_values('rank', inplace=True)
-        output.drop('rank', 1, inplace=True)
+        output.drop(labels='rank', axis=1, inplace=True)
         to_write = output.copy()
         for e in to_write['Experiment']:
             to_write.loc[to_write['Experiment'] == e,
@@ -405,7 +405,9 @@ def gen_total_solved_problems_table_split_tol(df, prefix, par):
 def plot_loghist(x, nbins):
     x = x[~np.isnan(x)]
     hist, bins = np.histogram(x, bins=nbins)
-    logbins = np.logspace(np.log10(bins[0] + 1e-6), np.log10(bins[-1]), nbins)
+    logbins = np.logspace(np.log10(max(bins[0], 1e-10)),
+                          np.log10(max(bins[-1], 1e-10)),
+                          nbins)
     plt.hist(x, bins=logbins)
     plt.xscale('log')
 
@@ -886,7 +888,7 @@ outputs = gen_total_solved_problems_table_split_tol(
 for df in outputs.values():
     df['rank'] = df['Experiment'].map(IMPROVEMENTS_ORDER_IDX)
     df.sort_values('rank', inplace=True)
-    df.drop('rank', 1, inplace=True)
+    df.drop(labels='rank', axis=1, inplace=True)
 
 gen_all_improvement_plots(outputs, f'{MITTELMANN_STR}_improvements')
 
@@ -918,6 +920,6 @@ outputs = gen_total_solved_problems_table_split_tol(
 for df in outputs.values():
     df['rank'] = df['Experiment'].map(IMPROVEMENTS_ORDER_IDX)
     df.sort_values('rank', inplace=True)
-    df.drop('rank', 1, inplace=True)
+    df.drop(labels='rank', axis=1, inplace=True)
 
 gen_all_improvement_plots(outputs, f'{NETLIB_STR}_improvements')
