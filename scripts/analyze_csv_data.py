@@ -381,10 +381,10 @@ def gen_total_solved_problems_table(df, prefix, par):
     output = output.sort_values("Solved count", ascending=True)
 
     # HACK to fix improvements table ordering and line break
-    if 'improvements' in prefix:
-        output['rank'] = output['Experiment'].map(IMPROVEMENTS_ORDER_IDX)
-        output.sort_values('rank', inplace=True)
-        output.drop(labels='rank', axis=1, inplace=True)
+    if "improvements" in prefix:
+        output["rank"] = output["Experiment"].map(IMPROVEMENTS_ORDER_IDX)
+        output.sort_values("rank", inplace=True)
+        output.drop(labels="rank", axis=1, inplace=True)
         to_write = output.copy()
         for e in to_write["Experiment"]:
             to_write.loc[to_write["Experiment"] == e, "Experiment"] = e.replace(
@@ -423,9 +423,9 @@ def gen_total_solved_problems_table_split_tol(df, prefix, par):
 def plot_loghist(x, nbins):
     x = x[~np.isnan(x)]
     hist, bins = np.histogram(x, bins=nbins)
-    logbins = np.logspace(np.log10(max(bins[0], 1e-10)),
-                          np.log10(max(bins[-1], 1e-10)),
-                          nbins)
+    logbins = np.logspace(
+        np.log10(max(bins[0], 1e-10)), np.log10(max(bins[-1], 1e-10)), nbins
+    )
     plt.hist(x, bins=logbins)
     plt.xscale("log")
 
@@ -479,10 +479,12 @@ def gen_ratio_histograms(df, prefix, xaxis, xlabel, limit, par):
         #    return np.nan
         return kkt_passes_0 / kkt_passes_1
 
-    ratios = df.groupby(['instance_name']) \
-        .apply(lambda _: performance_ratio_fn(_, par)) \
-        .reset_index(name='ratio') \
+    ratios = (
+        df.groupby(["instance_name"])
+        .apply(lambda _: performance_ratio_fn(_, par))
+        .reset_index(name="ratio")
         .dropna()
+    )
     plt.figure(figsize=(10, 6))
     plt.title(
         sanitize_title(
@@ -956,9 +958,9 @@ outputs = gen_total_solved_problems_table_split_tol(
 )
 
 for df in outputs.values():
-    df['rank'] = df['Experiment'].map(IMPROVEMENTS_ORDER_IDX)
-    df.sort_values('rank', inplace=True)
-    df.drop(labels='rank', axis=1, inplace=True)
+    df["rank"] = df["Experiment"].map(IMPROVEMENTS_ORDER_IDX)
+    df.sort_values("rank", inplace=True)
+    df.drop(labels="rank", axis=1, inplace=True)
 
 gen_all_improvement_plots(outputs, f"{MITTELMANN_STR}_improvements")
 
@@ -988,8 +990,8 @@ outputs = gen_total_solved_problems_table_split_tol(
 )
 
 for df in outputs.values():
-    df['rank'] = df['Experiment'].map(IMPROVEMENTS_ORDER_IDX)
-    df.sort_values('rank', inplace=True)
-    df.drop(labels='rank', axis=1, inplace=True)
+    df["rank"] = df["Experiment"].map(IMPROVEMENTS_ORDER_IDX)
+    df.sort_values("rank", inplace=True)
+    df.drop(labels="rank", axis=1, inplace=True)
 
 gen_all_improvement_plots(outputs, f"{NETLIB_STR}_improvements")
