@@ -209,8 +209,9 @@ def solved_problems_vs_xaxis_figs(
         xlabel,
         prefix,
         num_instances,
-        outer_legend=False):
-    plt.figure()
+        legend_location='best',
+        xmin=0.0):
+    fig = plt.figure()
     stats_dfs = {}
     for k, df_k in dfs.items():
         stats_df = df_k.groupby(xaxis)[xaxis] \
@@ -224,7 +225,8 @@ def solved_problems_vs_xaxis_figs(
         stats_dfs[k] = stats_df
 
     max_xaxis = pd.concat(stats_dfs)[xaxis].max()
-
+    lines = []
+    labels = []
     for k, df_k in stats_dfs.items():
         if df_k.empty:
             continue
@@ -232,26 +234,37 @@ def solved_problems_vs_xaxis_figs(
                             'cum_solved_count': df_k.iloc[-1]['cum_solved_count']},
                            ignore_index=True)
         df_k.reset_index()
-        plt.plot(df_k[xaxis],
-                 df_k['cum_solved_count'],
-                 label=label_lookup(k))
+        label = label_lookup(k)
+        lines.extend(plt.plot(df_k[xaxis],
+                              df_k['cum_solved_count'],
+                              label=label))
+        labels.append(label)
 
     plt.ylabel('Fraction of problems solved')
     plt.xlabel(xlabel)
     plt.ylim((0, 1))
     plt.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
     plt.title(sanitize_title(prefix))
-    if outer_legend:
+    plt.xscale('log')
+    plt.xlim(left=xmin)
+    if legend_location == 'outer':
         plt.legend(bbox_to_anchor=(1.04, 0.5), loc='center left')
+    elif legend_location == 'separate':
+        figlegend = plt.figure()
+        figlegend.legend(lines, labels, ncol=len(lines), loc='center')
+        legendpath = os.path.join(FIGS_DIR,
+                                  f'{prefix}_{xaxis}_v_solved_probs_legend.pdf')
+        figlegend.savefig(legendpath, bbox_inches="tight")
     else:
-        plt.legend(loc='best')
+        plt.legend(loc=legend_location)
     path = os.path.join(FIGS_DIR, f'{prefix}_{xaxis}_v_solved_probs.pdf')
-    plt.savefig(
+    fig.savefig(
         path,
         bbox_inches="tight")
 
 
-def gen_solved_problems_plots(df, prefix, num_instances, outer_legend=False):
+def gen_solved_problems_plots(
+        df, prefix, num_instances, legend_location='best'):
     exps = df['experiment_label'].unique()
     dfs = {k: df[df['experiment_label'] == k] for k in exps}
     optimal_dfs = {k: v[v['termination_reason'] == OPT]
@@ -263,22 +276,25 @@ def gen_solved_problems_plots(df, prefix, num_instances, outer_legend=False):
         f'KKT matrix passes SGM{SGM_SHIFT}',
         prefix,
         num_instances,
-        outer_legend)
+        legend_location,
+        xmin = 100)
     solved_problems_vs_xaxis_figs(
         optimal_dfs,
         'solve_time_sec',
         'Wall-clock time (secs)',
         prefix,
         num_instances,
-        outer_legend)
+        legend_location,
+        xmin = 1.0)
 
 
 def gen_solved_problems_plots_split_tol(
-        df, prefix, num_instances, outer_legend=False):
+        df, prefix, num_instances, legend_location='best'):
     tols = df['tolerance'].unique()
     for t in tols:
         gen_solved_problems_plots(
-            df[df['tolerance'] == t], prefix + f'_tol_{t:.0E}', num_instances, outer_legend)
+            df[df['tolerance'] == t], prefix + f'_tol_{t:.0E}', num_instances,
+            legend_location)
 
 
 def shifted_geomean(x, shift):
@@ -664,7 +680,8 @@ df_pdhg_vanilla = pd.read_csv(os.path.join(
 df_pdhg_vanilla = fill_in_missing_problems(df_pdhg_vanilla, miplib_instances)
 df = pd.concat((df_pdhg_mp, df_pdhg_vanilla, df_scs))
 gen_solved_problems_plots_split_tol(
-    df, f'{MIPLIB_STR}_baselines', len(miplib_instances))
+    df, f'{MIPLIB_STR}_baselines', len(miplib_instances),
+    legend_location='separate')
 gen_total_solved_problems_table_split_tol(df, f'{MIPLIB_STR}_baselines', PAR)
 
 df_pdhg_scs_dir = pd.concat(
@@ -689,7 +706,8 @@ df = pd.concat((df_pdhg_mp, df_pdhg_vanilla, df_scs))
 gen_solved_problems_plots_split_tol(
     df,
     f'{MITTELMANN_STR}_baselines',
-    len(mittelmann_instances))
+    len(mittelmann_instances),
+    legend_location='separate')
 gen_total_solved_problems_table_split_tol(
     df, f'{MITTELMANN_STR}_baselines', PAR)
 
@@ -715,7 +733,8 @@ df = pd.concat((df_pdhg_mp, df_pdhg_vanilla, df_scs))
 gen_solved_problems_plots_split_tol(
     df,
     f'{NETLIB_STR}_baselines',
-    len(netlib_instances))
+    len(netlib_instances),
+    legend_location='separate')
 gen_total_solved_problems_table_split_tol(
     df, f'{NETLIB_STR}_baselines', PAR)
 
