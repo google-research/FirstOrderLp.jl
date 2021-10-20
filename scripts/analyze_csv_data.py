@@ -460,6 +460,7 @@ def gen_ratio_histograms(df, prefix, xaxis, xlabel, limit, par):
     ratios = df.groupby(['instance_name']) \
         .apply(lambda _: performance_ratio_fn(_, par)) \
         .reset_index(name='ratio')
+        .dropna()
     plt.figure(figsize=(10, 6))
     plt.title(sanitize_title(
         f'{prefix} {xlabel} {label_lookup(l0)}:{label_lookup(l1)}'))
