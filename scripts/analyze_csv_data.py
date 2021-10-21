@@ -384,7 +384,7 @@ def gen_total_solved_problems_table(df, prefix, par):
     if "improvements" in prefix:
         output["rank"] = output["Experiment"].map(IMPROVEMENTS_ORDER_IDX)
         output.sort_values("rank", inplace=True)
-        output.drop("rank", 1, inplace=True)
+        output.drop(labels="rank", axis=1, inplace=True)
         to_write = output.copy()
         for e in to_write["Experiment"]:
             to_write.loc[to_write["Experiment"] == e, "Experiment"] = e.replace(
@@ -423,7 +423,9 @@ def gen_total_solved_problems_table_split_tol(df, prefix, par):
 def plot_loghist(x, nbins):
     x = x[~np.isnan(x)]
     hist, bins = np.histogram(x, bins=nbins)
-    logbins = np.logspace(np.log10(bins[0] + 1e-6), np.log10(bins[-1]), nbins)
+    logbins = np.logspace(
+        np.log10(max(bins[0], 1e-10)), np.log10(max(bins[-1], 1e-10)), nbins
+    )
     plt.hist(x, bins=logbins)
     plt.xscale("log")
 
@@ -481,19 +483,25 @@ def gen_ratio_histograms(df, prefix, xaxis, xlabel, limit, par):
         df.groupby(["instance_name"])
         .apply(lambda _: performance_ratio_fn(_, par))
         .reset_index(name="ratio")
+        .dropna()
     )
-    plt.figure(figsize=(10, 6))
-    plt.title(
-        sanitize_title(
-            f"{prefix} {xlabel} {label_lookup(l0)}:{label_lookup(l1)}"
+
+    nbins = min(len(ratios) // 3, 25)
+    if nbins > 0:
+        plt.figure(figsize=(10, 6))
+        plt.title(
+            sanitize_title(
+                f"{prefix} {xlabel} {label_lookup(l0)}:{label_lookup(l1)}"
+            )
         )
-    )
-    plot_loghist(ratios["ratio"], min(len(ratios) // 3, 25))
-    path = os.path.join(
-        FIGS_DIR,
-        f"{prefix}_{label_lookup(l0)}_{label_lookup(l1)}_{xaxis}_performance_ratio.pdf",
-    )
-    plt.savefig(path)
+        plot_loghist(ratios["ratio"], nbins)
+        path = os.path.join(
+            FIGS_DIR,
+            f"{prefix}_{label_lookup(l0)}_{label_lookup(l1)}"
+            + f"_{xaxis}_performance_ratio.pdf",
+        )
+        plt.savefig(path)
+
     table = ratios.to_latex(
         float_format="%.2f",
         longtable=False,
@@ -957,7 +965,7 @@ outputs = gen_total_solved_problems_table_split_tol(
 for df in outputs.values():
     df["rank"] = df["Experiment"].map(IMPROVEMENTS_ORDER_IDX)
     df.sort_values("rank", inplace=True)
-    df.drop("rank", 1, inplace=True)
+    df.drop(labels="rank", axis=1, inplace=True)
 
 gen_all_improvement_plots(outputs, f"{MITTELMANN_STR}_improvements")
 
@@ -989,6 +997,6 @@ outputs = gen_total_solved_problems_table_split_tol(
 for df in outputs.values():
     df["rank"] = df["Experiment"].map(IMPROVEMENTS_ORDER_IDX)
     df.sort_values("rank", inplace=True)
-    df.drop("rank", 1, inplace=True)
+    df.drop(labels="rank", axis=1, inplace=True)
 
 gen_all_improvement_plots(outputs, f"{NETLIB_STR}_improvements")
