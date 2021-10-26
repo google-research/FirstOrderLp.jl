@@ -64,6 +64,7 @@ TEX_DIR = os.path.join(OUTPUT_DIR, "tex")
 OPT = "TERMINATION_REASON_OPTIMAL"
 KKT_PASSES_LIMIT = 1e5
 TIME_LIMIT_SECS = 60 * 60  # 1hr
+TIME_LIMIT_SECS_ABLATION = 6 * 60 * 60  # 6hr
 # shift to use for shifted geometric mean
 SGM_SHIFT = int(10)
 # penalised average runtime:
@@ -315,7 +316,9 @@ def change_table_font_size(table):
     return table
 
 
-def gen_total_solved_problems_table(df, prefix, par):
+def gen_total_solved_problems_table(
+    df, prefix, par, time_limit=TIME_LIMIT_SECS
+):
     solved_probs = (
         df[df["termination_reason"] == OPT]
         .groupby("experiment_label")["experiment_label"]
@@ -358,7 +361,7 @@ def gen_total_solved_problems_table(df, prefix, par):
     if par is not None:
         wall_clock.loc[
             wall_clock["termination_reason"] != OPT, "solve_time_sec"
-        ] = (par * TIME_LIMIT_SECS)
+        ] = (par * time_limit)
     else:
         wall_clock.loc[
             wall_clock["termination_reason"] != OPT, "solve_time_sec"
@@ -410,12 +413,14 @@ def gen_total_solved_problems_table(df, prefix, par):
     return output
 
 
-def gen_total_solved_problems_table_split_tol(df, prefix, par):
+def gen_total_solved_problems_table_split_tol(
+    df, prefix, par, time_limit=TIME_LIMIT_SECS
+):
     outputs = {}
     tols = df["tolerance"].unique()
     for t in tols:
         outputs[t] = gen_total_solved_problems_table(
-            df[df["tolerance"] == t], prefix + f"_tol_{t:.0E}", par
+            df[df["tolerance"] == t], prefix + f"_tol_{t:.0E}", par, time_limit
         )
     return outputs
 
@@ -694,7 +699,9 @@ df = pd.concat((df_stepsize, df_best_fixed, df_best_ind))
 gen_solved_problems_plots_split_tol(
     df, f"{MIPLIB_STR}_stepsize", len(miplib_instances), False
 )
-gen_total_solved_problems_table_split_tol(df, f"{MIPLIB_STR}_stepsize", PAR)
+gen_total_solved_problems_table_split_tol(
+    df, f"{MIPLIB_STR}_stepsize", PAR, TIME_LIMIT_SECS_ABLATION
+)
 
 ######################################################################
 
@@ -816,7 +823,9 @@ df = pd.concat((df_default, df))
 gen_solved_problems_plots_split_tol(
     df, f"{MIPLIB_STR}_presolve", len(miplib_instances)
 )
-gen_total_solved_problems_table_split_tol(df, f"{MIPLIB_STR}_presolve", PAR)
+gen_total_solved_problems_table_split_tol(
+    df, f"{MIPLIB_STR}_presolve", PAR, TIME_LIMIT_SECS_ABLATION
+)
 
 ######################################################################
 
@@ -845,14 +854,16 @@ df = pd.concat(
 gen_solved_problems_plots_split_tol(
     df, f"{MIPLIB_STR}_scaling", len(miplib_instances)
 )
-gen_total_solved_problems_table_split_tol(df, f"{MIPLIB_STR}_scaling", PAR)
+gen_total_solved_problems_table_split_tol(
+    df, f"{MIPLIB_STR}_scaling", PAR, TIME_LIMIT_SECS_ABLATION
+)
 
 df = pd.concat((df, df_best_per))
 gen_solved_problems_plots_split_tol(
     df, f"{MIPLIB_STR}_scaling_with_best_per", len(miplib_instances)
 )
 gen_total_solved_problems_table_split_tol(
-    df, f"{MIPLIB_STR}_scaling_with_best_per", PAR
+    df, f"{MIPLIB_STR}_scaling_with_best_per", PAR, TIME_LIMIT_SECS_ABLATION
 )
 
 ######################################################################
@@ -863,7 +874,9 @@ df = fill_in_missing_problems(df, miplib_instances)
 gen_solved_problems_plots_split_tol(
     df, f"{MIPLIB_STR}_restarts", len(miplib_instances)
 )
-gen_total_solved_problems_table_split_tol(df, f"{MIPLIB_STR}_restarts", PAR)
+gen_total_solved_problems_table_split_tol(
+    df, f"{MIPLIB_STR}_restarts", PAR, TIME_LIMIT_SECS_ABLATION
+)
 
 ######################################################################
 
@@ -914,7 +927,9 @@ df = pd.concat((df, df_best_fixed, df_best_ind))
 gen_solved_problems_plots_split_tol(
     df, f"{MIPLIB_STR}_primalweight", len(miplib_instances), False
 )
-gen_total_solved_problems_table_split_tol(df, f"{MIPLIB_STR}_primalweight", PAR)
+gen_total_solved_problems_table_split_tol(
+    df, f"{MIPLIB_STR}_primalweight", PAR, TIME_LIMIT_SECS_ABLATION
+)
 
 
 ######################################################################
