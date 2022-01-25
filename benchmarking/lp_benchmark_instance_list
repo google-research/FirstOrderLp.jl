@@ -3,6 +3,20 @@
 # - http://plato.asu.edu/ftp/lpsimp.html
 # - http://plato.asu.edu/ftp/lpbar.html
 # - http://plato.asu.edu/ftp/network.html
+#
+# The instances included in Mittelmann's benchmarks is updated periodically to
+# stay relevant. This list was retrieved on approximately 2021-04-23. An
+# approximate version of those pages on that date can be retrieved from
+# archive.org:
+# - https://web.archive.org/web/20210222174945/http://plato.asu.edu/ftp/lpsimp.html
+# - https://web.archive.org/web/20200726085455/http://plato.asu.edu/ftp/lpbar.html
+# - https://web.archive.org/web/20210126083601/http://plato.asu.edu/ftp/network.html
+#
+# Note that archive.org skips the version of lpbar.html used when creating this
+# list; the link is to the preceeding version. The differences are that brazil3,
+# dbic1, neos1, neos2, ns1644855, nug15, pds-40, stat96v4, and watson_2 had been
+# dropped, and set-cover had been added.
+#
 16_n14
 buildingenergy
 chrom1024-7

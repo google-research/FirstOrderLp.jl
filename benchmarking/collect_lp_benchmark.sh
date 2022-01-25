@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
+
 # This script illustrates how to collect the instances in the "LP Benchmark"
 # set. Although it can be used directly to collect the benchmark, it is intended
 # primarily as a guide to collecting the benchmark - it makes several
@@ -24,6 +24,19 @@
 # * Benchmark of Barrier LP solvers: http://plato.asu.edu/ftp/lpbar.html
 # * Large Network-LP Benchmark (commercial vs free):
 #     http://plato.asu.edu/ftp/network.html
+#
+# The instances included in Mittelmann's benchmarks is updated periodically to
+# stay relevant. This instances this script collects are based on the benchmark
+# pages on approximately 2021-04-23. An approximate version of those pages on
+# that date can be retrieved from archive.org:
+# - https://web.archive.org/web/20210222174945/http://plato.asu.edu/ftp/lpsimp.html
+# - https://web.archive.org/web/20200726085455/http://plato.asu.edu/ftp/lpbar.html
+# - https://web.archive.org/web/20210126083601/http://plato.asu.edu/ftp/network.html
+#
+# Note that archive.org skips the version of lpbar.html used when creating this
+# benchmark set; the link is to the preceeding version. The differences are that
+# brazil3, dbic1, neos1, neos2, ns1644855, nug15, pds-40, stat96v4, and watson_2
+# had been dropped, and set-cover had been added.
 
 if [[ "$#" != 2 ]]; then
   echo "Usage: collect_lp_benchmark.sh temporary_directory" \
@@ -86,20 +99,20 @@ for f in L1_sixm250obs L1_sixm1000obs Linf_520c; do
       "${TEMP_DIR}/emps" | gzip > "${DEST_DIR}/${f}.mps.gz"
 done
 
-# gzipped "compressed MPS" instances from plato.asu.edu/fp/lptestset.
+# bzipped "compressed MPS" instances from plato.asu.edu/fp/lptestset.
 for f in fome/fome13 misc/cont1 misc/cont11 misc/neos misc/neos3 \
     misc/ns1687037 misc/ns1688926 misc/stormG2_1000 nug/nug08-3rd pds/pds-100 \
     rail/rail4284; do
   instance="$(basename $f)"
-  wget -nv -O - "http://plato.asu.edu/ftp/lptestset/${f}.gz" | zcat | \
+  wget -nv -O - "http://plato.asu.edu/ftp/lptestset/${f}.bz2" | bzcat | \
       "${TEMP_DIR}/emps" | gzip > "${DEST_DIR}/${instance}.mps.gz"
 done
 
-# gzipped mps network instances from plato.asu.edu/fp/lptestset.
+# bzipped mps network instances from plato.asu.edu/fp/lptestset.
 for f in 16_n14 i_n13 lo10 long15 netlarge1 netlarge2 netlarge3 netlarge6 \
     square15 wide15; do
-  wget -nv -O "${DEST_DIR}/${f}.mps.gz" \
-      "http://plato.asu.edu/ftp/lptestset/network/${f}.mps.gz"
+  wget -nv -O - "http://plato.asu.edu/ftp/lptestset/network/${f}.mps.bz2" | \
+      bzcat | gzip > "${DEST_DIR}/${f}.mps.gz"
 done
 
 # gzipped "compressed MPS" instances from old.sztaki.hu/~meszaros.
@@ -126,11 +139,11 @@ if false; then
          gzip > "${DEST_DIR}/${f}.mps.gz"
   done
 
-  # Discontinued gzipped "compressed MPS" instances from
+  # Discontinued bzipped "compressed MPS" instances from
   # plato.asu.edu/fp/lptestset.
   for f in misc/neos1 misc/neos2 misc/watson_2 pds/pds-40; do
     instance="$(basename $f)"
-    wget -nv -O - "http://plato.asu.edu/ftp/lptestset/${f}.gz" | zcat | \
+    wget -nv -O - "http://plato.asu.edu/ftp/lptestset/${f}.bz2" | bzcat | \
         "${TEMP_DIR}/emps" | gzip > "${DEST_DIR}/${instance}.mps.gz"
   done
 
