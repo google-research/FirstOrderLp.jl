@@ -25,10 +25,10 @@
 # * Large Network-LP Benchmark (commercial vs free):
 #     http://plato.asu.edu/ftp/network.html
 #
-# The instances included in Mittelmann's benchmarks is updated periodically to
-# stay relevant. This instances this script collects are based on the benchmark
-# pages on approximately 2021-04-23. An approximate version of those pages on
-# that date can be retrieved from archive.org:
+# The set of instances included in Mittelmann's benchmarks is updated
+# periodically to stay relevant. The instances this script collects are based on
+# the benchmark pages from approximately 2021-04-23. An approximate version of
+# those pages on that date can be retrieved from archive.org:
 # - https://web.archive.org/web/20210222174945/http://plato.asu.edu/ftp/lpsimp.html
 # - https://web.archive.org/web/20200726085455/http://plato.asu.edu/ftp/lpbar.html
 # - https://web.archive.org/web/20210126083601/http://plato.asu.edu/ftp/network.html
