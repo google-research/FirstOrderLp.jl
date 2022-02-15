@@ -6,8 +6,12 @@ This repository contains experimental code for solving linear and quadratic
 programming problems using first-order methods. It provides basic utilities and
 data structures for reading MPS files, rescaling, and implementing saddle-point
 methods. Specialized implementations are present for Mirror Prox and
-Primal-Dual Hybrid Gradient. It is focused on supporting experiments and
-publications and is not currently configured to be used as a library.
+Primal-Dual Hybrid Gradient.
+
+**A C++ implementation of the PDLP algorithm is included in
+[OR-Tools](https://github.com/google/or-tools). We recommend the OR-Tools
+version of PDLP to all potential users. This repository is intended exclusively
+for supporting experiments and publications.**
 
 ## Related papers
 
