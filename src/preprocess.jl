@@ -50,7 +50,7 @@ function validate(p::QuadraticProgrammingProblem)
   end
   if sum(p.variable_upper_bound .== -Inf) > 0
     @info "sum(p.variable_upper_bound .== -Inf) ==
-            $(sum(p.variable_lupper_bound .== -Inf))"
+            $(sum(p.variable_upper_bound .== -Inf))"
     error_found = true
   end
   if any(isnan, p.variable_lower_bound) || any(isnan, p.variable_upper_bound)
