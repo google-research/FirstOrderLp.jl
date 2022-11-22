@@ -239,7 +239,7 @@ end
   end
   @testset "restart_scheme=adaptive_localized" begin
     parameters = generate_mirror_prox_params(
-      iteration_limit = 750,
+      iteration_limit = 2000,
       primal_importance = 1.0,
       diagonal_scaling = "off",
       verbosity = 0,
