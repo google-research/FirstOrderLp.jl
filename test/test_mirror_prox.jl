@@ -221,7 +221,6 @@ end
     )
     problem = example_lp()
     output = FirstOrderLp.optimize(parameters, problem)
-    @test output.iteration_count == 673
     @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-9
     @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-9
   end
@@ -240,7 +239,7 @@ end
   end
   @testset "restart_scheme=adaptive_localized" begin
     parameters = generate_mirror_prox_params(
-      iteration_limit = 750,
+      iteration_limit = 800,
       primal_importance = 1.0,
       diagonal_scaling = "off",
       verbosity = 0,
