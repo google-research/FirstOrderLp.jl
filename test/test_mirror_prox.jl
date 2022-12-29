@@ -221,6 +221,7 @@ end
     )
     problem = example_lp()
     output = FirstOrderLp.optimize(parameters, problem)
+    @test output.iterations_completed == 673
     @test output.primal_solution ≈ [1.0; 0.0; 6.0; 2.0] atol = 1.0e-9
     @test output.dual_solution ≈ [0.5; 4.0; 0.0] atol = 1.0e-9
   end
