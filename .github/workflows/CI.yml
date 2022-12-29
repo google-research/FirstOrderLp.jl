@@ -70,7 +70,8 @@ jobs:
               $GITHUB_WORKSPACE/benchmarking/process_json_to_csv.jl \
               /tmp/layout.json /tmp/dataset.csv
           if [[ $(wc -l </tmp/dataset.csv) != 3 ]]; then
-            echo "Unexpected number of lines in dataset.csv"
+            echo "Unexpected number of lines in dataset.csv:" \
+                "$(wc -l </tmp/dataset.csv)"
             cat /tmp/dataset.csv
             exit 1
           fi
