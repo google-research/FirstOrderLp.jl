@@ -385,7 +385,7 @@ function power_method_failure_probability(
     # The theorem requires epsilon > 0 and k >= 2.
     return 1.0
   end
-  return min(0.824, 0.354 / sqrt(epsilon * (k - 1))) *
+  return min(0.824, 0.354 / (epsilon * (k - 1))) *
          sqrt(dimension) *
          (1.0 - epsilon)^(k - 1 / 2)
 end
