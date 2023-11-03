@@ -100,13 +100,13 @@ function l2_norm(matrix::SparseMatrixCSC{Float64,Int64}, dimension::Int64)
   scale_factor = vec(maximum(abs, matrix, dims = dimension))
   scale_factor[iszero.(scale_factor)] .= 1.0
   if dimension == 1
-    scaled_matrix = matrix * Diagonal(1 ./ scale_factor)
+    scaled_matrix = matrix * sparse(Diagonal(1 ./ scale_factor))
     return scale_factor .*
            vec(sqrt.(sum(t -> t^2, scaled_matrix, dims = dimension)))
   end
 
   if dimension == 2
-    scaled_matrix = Diagonal(1 ./ scale_factor) * matrix
+    scaled_matrix = sparse(Diagonal(1 ./ scale_factor)) * matrix
     return scale_factor .*
            vec(sqrt.(sum(t -> t^2, scaled_matrix, dims = dimension)))
   end
@@ -561,16 +561,16 @@ function scale_problem(
   @assert all(t -> t > 0, variable_rescaling)
   problem.objective_vector ./= variable_rescaling
   problem.objective_matrix =
-    Diagonal(1 ./ variable_rescaling) *
+    sparse(Diagonal(1 ./ variable_rescaling)) *
     problem.objective_matrix *
-    Diagonal(1 ./ variable_rescaling)
+    sparse(Diagonal(1 ./ variable_rescaling))
   problem.variable_upper_bound .*= variable_rescaling
   problem.variable_lower_bound .*= variable_rescaling
   problem.right_hand_side ./= constraint_rescaling
   problem.constraint_matrix =
-    Diagonal(1 ./ constraint_rescaling) *
+    sparse(Diagonal(1 ./ constraint_rescaling)) *
     problem.constraint_matrix *
-    Diagonal(1 ./ variable_rescaling)
+    sparse(Diagonal(1 ./ variable_rescaling))
   return
 end
 
