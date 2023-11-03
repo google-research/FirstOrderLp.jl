@@ -561,15 +561,13 @@ function scale_problem(
   @assert all(t -> t > 0, variable_rescaling)
   problem.objective_vector ./= variable_rescaling
   problem.objective_matrix =
-    (Diagonal(1 ./ variable_rescaling) *
-    problem.objective_matrix) *
+    (Diagonal(1 ./ variable_rescaling) * problem.objective_matrix) *
     Diagonal(1 ./ variable_rescaling)
   problem.variable_upper_bound .*= variable_rescaling
   problem.variable_lower_bound .*= variable_rescaling
   problem.right_hand_side ./= constraint_rescaling
   problem.constraint_matrix =
-    (Diagonal(1 ./ constraint_rescaling) *
-    problem.constraint_matrix) *
+    (Diagonal(1 ./ constraint_rescaling) * problem.constraint_matrix) *
     Diagonal(1 ./ variable_rescaling)
   return
 end
